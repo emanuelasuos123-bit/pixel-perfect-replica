@@ -49,11 +49,8 @@ export const places: Place[] = [
   { ...base, id: "centro", name: "Centro do Pirambu", category: "centro", coords: [-38.5534973, -3.7102184], sources: [osm("relation", 5522180)] },
   { ...base, id: "igreja-maanaim", name: "Igreja Restitui Maanaim", category: "cultura", coords: [-38.5540619, -3.7090532], sources: [osm("way", 686871081)] },
   { ...base, id: "dom-helio", name: "Centro Educacional Dom Hélio Campos", category: "projetos", coords: [-38.5531523, -3.7095799], sources: [osm("way", 686856933)] },
-  { ...base, id: "hilberto", name: "Escola Hilberto Silva", category: "projetos", coords: [-38.5556224, -3.7122631], sources: [osm("way", 950117975)] },
   { ...base, id: "flavio-marcilio", name: "Escola Governador Flávio Marcílio", category: "projetos", coords: [-38.5583483, -3.7109752], sources: [osm("way", 950121477)] },
   { ...base, id: "moema", name: "Centro Educacional Moema Távora", category: "projetos", coords: [-38.5500944, -3.712199], sources: [osm("way", 950115008)] },
-  { ...base, id: "cristo-redentor", name: "Escola Cristo Redentor", category: "projetos", coords: [-38.5586555, -3.7091321], sources: [osm("way", 950123198)] },
-  { ...base, id: "tertuliano", name: "Escola Tertuliano Cambraia", category: "projetos", coords: [-38.5550373, -3.7130773], sources: [osm("node", 6967597192)] },
 ];
 
 export const people: Person[] = [];

@@ -87,8 +87,8 @@
   width: 20px; height: 20px; background: var(--accent);
   box-shadow: 0 0 0 6px oklch(0.82 0.12 75 / 30%), 0 0 26px oklch(0.82 0.12 75 / 50%);
 }
-.atlas-marker[data-state="dim"] { opacity: .18; transform: scale(.7); }
-.atlas-marker[data-state="hidden"] { opacity: 0; pointer-events: none; }
+.atlas-marker[data-state="dim"] { opacity: .18 !important; transform: scale(.7); }
+.atlas-marker[data-state="hidden"] { opacity: 0 !important; pointer-events: none; }
 .atlas-marker[data-state="active"] { transform: scale(1.6); animation: atlas-pulse 1.8s ease-out infinite; }
 @keyframes atlas-pulse {
   0% { box-shadow: 0 0 0 0 var(--glow); }
