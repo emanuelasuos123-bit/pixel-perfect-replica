@@ -122,7 +122,7 @@ export function Atlas() {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
-      <div ref={el} className="absolute inset-0" />
+      <div className="absolute inset-0"><div ref={el} className="h-full w-full" /></div>
 
       {/* Title + search */}
       <div className="pointer-events-none absolute left-4 top-4 z-10 flex max-w-[calc(100%-2rem)] flex-col gap-3 md:left-6 md:top-6">
