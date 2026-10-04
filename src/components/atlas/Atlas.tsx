@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Map as MLMap, Marker } from "maplibre-gl";
+import type { Map as MLMap, Marker, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { CENTER, categories, places, territory, type CategoryId, type Place } from "@/data/atlas";
 import { mapStyle } from "./mapStyle";
@@ -78,7 +78,7 @@ export function Atlas() {
   }, [filters, active]);
 
   const setRoute = (coords: [number, number][]) => {
-    const src = map.current?.getSource("route") as maplibregl.GeoJSONSource | undefined;
+    const src = map.current?.getSource("route") as GeoJSONSource | undefined;
     src?.setData({ type: "FeatureCollection", features: coords.length > 1 ? [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } }] : [] });
   };
 
