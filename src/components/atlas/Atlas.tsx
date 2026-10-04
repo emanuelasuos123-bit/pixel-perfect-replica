@@ -28,7 +28,7 @@ export function Atlas() {
   useEffect(() => {
     let cancelled = false;
     const created: Marker[] = [];
-    import("maplibre-gl").then(({ default: ml }) => {
+    import("maplibre-gl").then((ml) => {
       if (cancelled || !el.current) return;
       const m = new ml.Map({ container: el.current, style: mapStyle, bounds, fitBoundsOptions: { padding: 60 }, pitch: 20, bearing: -12, maxPitch: 60, attributionControl: { compact: true } });
       map.current = m;
@@ -53,7 +53,7 @@ export function Atlas() {
         places.forEach((p) => {
           const d = document.createElement("div");
           d.className = "atlas-marker";
-          d.dataset.centro = String(p.category === "centro");
+          d.dataset["centro"] = String(p.category === "centro");
           d.title = p.name;
           d.setAttribute("aria-label", p.name);
           d.addEventListener("click", (e) => { e.stopPropagation(); select(p); });
@@ -72,7 +72,7 @@ export function Atlas() {
       const d = markers.current[p.id];
       if (!d) return;
       const visible = p.category === "centro" || filters.has(p.category);
-      d.dataset.state = !visible ? "hidden" : active ? (p.id === active.id ? "active" : p.id === "centro" ? "" : "dim") : "";
+      d.dataset["state"] = !visible ? "hidden" : active ? (p.id === active.id ? "active" : p.id === "centro" ? "" : "dim") : "";
     });
     map.current?.getLayer("links") && map.current.setPaintProperty("links", "line-opacity", active ? 0 : 0.18);
   }, [filters, active]);

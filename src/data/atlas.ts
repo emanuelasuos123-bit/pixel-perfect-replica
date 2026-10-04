@@ -1,6 +1,7 @@
 // Atlas data model. All facts here come from OpenStreetMap; fields without
 // verified material stay empty and render as "aguardando material".
 import boundary from "./boundary.json";
+import type { Feature, Polygon } from "geojson";
 
 export type CategoryId = "turismo" | "cultura" | "historia" | "arte" | "projetos" | "lazer";
 
@@ -42,7 +43,7 @@ const osm = (type: string, id: number): Source => ({
 
 const base = { media: [], people: [], projects: [], stories: [] };
 
-export const territory = boundary as GeoJSON.Feature<GeoJSON.Polygon>;
+export const territory = boundary as unknown as Feature<Polygon>;
 
 export const places: Place[] = [
   { ...base, id: "centro", name: "Centro do Pirambu", category: "centro", coords: [-38.5534973, -3.7102184], sources: [osm("relation", 5522180)] },
@@ -59,4 +60,4 @@ export const people: Person[] = [];
 export const projects: Project[] = [];
 export const stories: Story[] = []; // "Voz do Pirambu"
 
-export const CENTER = places[0];
+export const CENTER = places[0] as Place;
