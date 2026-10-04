@@ -30,7 +30,6 @@ export function Atlas() {
     const created: Marker[] = [];
     import("maplibre-gl").then((mod) => {
       const ml = (mod as unknown as { default?: typeof mod }).default ?? mod;
-      return ( {
       if (cancelled || !el.current) return;
       const m = new ml.Map({ container: el.current, style: mapStyle, bounds, fitBoundsOptions: { padding: 60 }, pitch: 20, bearing: -12, maxPitch: 60, attributionControl: { compact: true } });
       map.current = m;
