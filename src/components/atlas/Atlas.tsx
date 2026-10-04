@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as MLMap, Marker, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { CENTER, categories, places, territory, type CategoryId, type Place } from "@/data/atlas";
 import { mapStyle } from "./mapStyle";
 import { streetPath } from "@/lib/trajectory";
@@ -29,9 +28,10 @@ export function Atlas() {
   useEffect(() => {
     let cancelled = false;
     const created: Marker[] = [];
-    import("maplibre-gl").then((ml) => {
+    import("maplibre-gl").then((mod) => {
+      const ml = (mod as unknown as { default?: typeof mod }).default ?? mod;
+      return ( {
       if (cancelled || !el.current) return;
-      ml.setWorkerUrl(workerUrl);
       const m = new ml.Map({ container: el.current, style: mapStyle, bounds, fitBoundsOptions: { padding: 60 }, pitch: 20, bearing: -12, maxPitch: 60, attributionControl: { compact: true } });
       map.current = m;
       m.on("load", () => {
