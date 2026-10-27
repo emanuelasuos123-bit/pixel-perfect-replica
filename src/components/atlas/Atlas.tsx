@@ -5,6 +5,7 @@ import { CENTER, categories, places, territory, type CategoryId, type Place } fr
 import { mapStyle } from "./mapStyle";
 import { streetPath } from "@/lib/trajectory";
 import { PlacePanel } from "./PlacePanel";
+import { Welcome, hasSeenWelcome, markWelcomeSeen } from "./Welcome";
 
 const ring = territory.geometry.coordinates[0] as [number, number][];
 const bounds = ring.reduce(
@@ -21,6 +22,12 @@ export function Atlas() {
   const [query, setQuery] = useState("");
   const [layersOpen, setLayersOpen] = useState(false);
   const routeAnim = useRef<number>(0);
+  const [welcomeOpen, setWelcomeOpen] = useState(() => !hasSeenWelcome());
+
+  const closeWelcome = () => {
+    markWelcomeSeen();
+    setWelcomeOpen(false);
+  };
 
   const overview = () =>
     map.current?.fitBounds(bounds, { padding: 60, pitch: 20, bearing: -12, duration: 1600 });
@@ -172,7 +179,18 @@ export function Atlas() {
         </div>
       </div>
 
+      {/* Botão para rever as boas-vindas / sobre o projeto */}
+      <button
+        onClick={() => setWelcomeOpen(true)}
+        aria-label="Sobre o projeto"
+        className="glass absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold hover:text-primary md:right-6 md:top-6"
+      >
+        ?
+      </button>
+
       {active && <PlacePanel place={active} onClose={close} />}
+
+      {welcomeOpen && <Welcome onClose={closeWelcome} />}
     </div>
   );
 }
