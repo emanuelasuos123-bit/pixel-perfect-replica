@@ -1,26 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Map as MLMap, Marker, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { CENTER, categories, places, territory, type CategoryId, type Place } from "@/data/atlas";
+import { CENTER, places, territory, type Place } from "@/data/atlas";
+import { caixaTerritorio as bounds, caixaLimite } from "@/data/limites";
 import { mapStyle } from "./mapStyle";
 import { streetPath } from "@/lib/trajectory";
 import { PlacePanel } from "./PlacePanel";
 import { Welcome, hasSeenWelcome, markWelcomeSeen } from "./Welcome";
 
 const ring = territory.geometry.coordinates[0] as [number, number][];
-const bounds = ring.reduce(
-  (b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)],
-  [180, 90, -180, -90],
-) as [number, number, number, number];
 
 export function Atlas() {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MLMap | null>(null);
   const markers = useRef<Record<string, HTMLDivElement>>({});
   const [active, setActive] = useState<Place | null>(null);
-  const [filters, setFilters] = useState<Set<CategoryId>>(new Set(categories.map((c) => c.id)));
-  const [query, setQuery] = useState("");
-  const [layersOpen, setLayersOpen] = useState(false);
+  const selectedId = useRef<string | null>(null);
+  const requestVersion = useRef(0);
   const routeAnim = useRef<number>(0);
   const [welcomeOpen, setWelcomeOpen] = useState(() => !hasSeenWelcome());
 
@@ -38,7 +34,7 @@ export function Atlas() {
     import("maplibre-gl").then((mod) => {
       const ml = (mod as unknown as { default?: typeof mod }).default ?? mod;
       if (cancelled || !el.current) return;
-      const m = new ml.Map({ container: el.current, style: mapStyle, bounds, fitBoundsOptions: { padding: 60 }, pitch: 20, bearing: -12, maxPitch: 60, attributionControl: { compact: true } });
+      const m = new ml.Map({ container: el.current, style: mapStyle, bounds, maxBounds: caixaLimite, minZoom: 12.5, fitBoundsOptions: { padding: 60 }, pitch: 20, bearing: -12, maxPitch: 60, attributionControl: { compact: true } });
       map.current = m;
       m.on("load", () => {
         m.addSource("mask", {
@@ -49,11 +45,6 @@ export function Atlas() {
         m.addSource("territory", { type: "geojson", data: territory });
         m.addLayer({ id: "territory-glow", type: "line", source: "territory", paint: { "line-color": "#6cc4ff", "line-width": 8, "line-blur": 8, "line-opacity": 0.35 } });
         m.addLayer({ id: "territory-line", type: "line", source: "territory", paint: { "line-color": "#8fd3ff", "line-width": 1.4 } });
-        m.addSource("links", {
-          type: "geojson",
-          data: { type: "FeatureCollection", features: places.slice(1).map((p) => ({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [CENTER.coords, p.coords] } })) },
-        });
-        m.addLayer({ id: "links", type: "line", source: "links", paint: { "line-color": "#f2c46b", "line-width": 0.6, "line-opacity": 0.18, "line-dasharray": [2, 4] } });
         m.addSource("route", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
         m.addLayer({ id: "route-glow", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#f2c46b", "line-width": 9, "line-blur": 6, "line-opacity": 0.35 } });
         m.addLayer({ id: "route", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffd98a", "line-width": 2.4 } });
@@ -64,13 +55,18 @@ export function Atlas() {
           d.dataset["centro"] = String(p.category === "centro");
           d.title = p.name;
           d.setAttribute("aria-label", p.name);
+          d.setAttribute("role", "button");
+          d.tabIndex = 0;
+          d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(p); } });
           d.addEventListener("click", (e) => { e.stopPropagation(); select(p); });
           markers.current[p.id] = d;
           created.push(new ml.Marker({ element: d }).setLngLat(p.coords).addTo(m));
+          // MapLibre define um rótulo genérico ao adicionar o marcador.
+          d.setAttribute("aria-label", p.name);
         });
       });
     });
-    return () => { cancelled = true; created.forEach((x) => x.remove()); map.current?.remove(); };
+    return () => { cancelled = true; requestVersion.current += 1; cancelAnimationFrame(routeAnim.current); created.forEach((x) => x.remove()); map.current?.remove(); map.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -79,11 +75,9 @@ export function Atlas() {
     places.forEach((p) => {
       const d = markers.current[p.id];
       if (!d) return;
-      const visible = p.category === "centro" || filters.has(p.category);
-      d.dataset["state"] = !visible ? "hidden" : active ? (p.id === active.id ? "active" : p.id === "centro" ? "" : "dim") : "";
+      d.dataset["state"] = active ? (p.id === active.id ? "active" : p.id === "centro" ? "" : "dim") : "";
     });
-    map.current?.getLayer("links") && map.current.setPaintProperty("links", "line-opacity", active ? 0 : 0.18);
-  }, [filters, active]);
+  }, [active]);
 
   const setRoute = (coords: [number, number][]) => {
     const src = map.current?.getSource("route") as GeoJSONSource | undefined;
@@ -91,6 +85,8 @@ export function Atlas() {
   };
 
   async function select(p: Place) {
+    const version = ++requestVersion.current;
+    selectedId.current = p.id;
     setActive(p);
     cancelAnimationFrame(routeAnim.current);
     setRoute([]);
@@ -101,9 +97,10 @@ export function Atlas() {
     });
     if (p.id === CENTER.id) return;
     const path = await streetPath(CENTER.coords, p.coords);
-    if (!path) return;
+    if (!path || version !== requestVersion.current || selectedId.current !== p.id) return;
     let i = 0;
     const step = () => {
+      if (version !== requestVersion.current) return;
       i += Math.max(1, Math.ceil(path.length / 60));
       setRoute(path.slice(0, i));
       if (i < path.length) routeAnim.current = requestAnimationFrame(step);
@@ -112,6 +109,8 @@ export function Atlas() {
   }
 
   function close() {
+    requestVersion.current += 1;
+    selectedId.current = null;
     setActive(null);
     cancelAnimationFrame(routeAnim.current);
     setRoute([]);
@@ -119,61 +118,23 @@ export function Atlas() {
     overview();
   }
 
-  const results = useMemo(
-    () => (query.trim() ? places.filter((p) => p.name.toLowerCase().includes(query.toLowerCase())) : []),
-    [query],
-  );
-
-  const toggle = (id: CategoryId) =>
-    setFilters((f) => { const n = new Set(f); n.has(id) ? n.delete(id) : n.add(id); return n; });
-
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
       <div className="absolute inset-0"><div ref={el} className="h-full w-full" /></div>
 
-      {/* Title + search */}
+      {/* Cabeçalho e orientação */}
       <div className="pointer-events-none absolute left-4 top-4 z-10 flex max-w-[calc(100%-2rem)] flex-col gap-3 md:left-6 md:top-6">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">Cybercartografia · Fortaleza</p>
-          <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">Pirambu</h1>
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">Cybercartografia</p>
+          <h1 className="font-display text-3xl font-semibold md:text-4xl"><span className="md:hidden">Grande Pirambu</span><span className="hidden md:inline">Comunidade do Grande Pirambu</span></h1>
           <p className="text-xs text-muted-foreground">Atlas do território, das pessoas e das histórias.</p>
         </div>
-        <div className="pointer-events-auto relative w-72 max-w-full">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar lugar, pessoa, projeto…"
-            className="glass w-full rounded-full px-4 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
-          />
-          {results.length > 0 && (
-            <ul className="glass absolute mt-2 w-full overflow-hidden rounded-xl text-sm">
-              {results.map((p) => (
-                <li key={p.id}>
-                  <button className="w-full px-4 py-2 text-left hover:bg-secondary" onClick={() => { setQuery(""); select(p); }}>
-                    {p.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <p className="glass w-72 max-w-full rounded-lg px-4 py-2 text-xs leading-relaxed">Clique nos pontos para descobrir mais sobre a comunidade do Grande Pirambu!</p>
       </div>
 
       {/* Controls */}
-      <div className="absolute bottom-6 left-4 z-10 flex flex-col items-start gap-2 md:left-6">
-        {layersOpen && (
-          <div className="glass flex flex-col gap-1 rounded-xl p-3 text-sm">
-            {categories.map((c) => (
-              <label key={c.id} className="flex cursor-pointer items-center gap-2">
-                <input type="checkbox" className="accent-primary" checked={filters.has(c.id)} onChange={() => toggle(c.id)} />
-                {c.label}
-              </label>
-            ))}
-            <span className="mt-1 text-[11px] text-muted-foreground">Pessoas · em breve</span>
-          </div>
-        )}
+      <div className={`absolute bottom-6 left-4 z-10 flex-col items-start gap-2 md:left-6 ${active ? "hidden md:flex" : "flex"}`}>
         <div className="flex gap-2">
-          <button onClick={() => setLayersOpen((o) => !o)} className="glass rounded-full px-4 py-2 text-xs font-medium hover:text-primary">Camadas</button>
           <button onClick={close} className="glass rounded-full px-4 py-2 text-xs font-medium hover:text-primary">Voltar ao território</button>
           <button onClick={() => select(CENTER)} className="glass rounded-full px-4 py-2 text-xs font-medium hover:text-accent">Centro</button>
         </div>
@@ -188,7 +149,7 @@ export function Atlas() {
         ?
       </button>
 
-      {active && <PlacePanel place={active} onClose={close} />}
+      {active && <PlacePanel key={active.id} place={active} onClose={close} />}
 
       {welcomeOpen && <Welcome onClose={closeWelcome} />}
     </div>

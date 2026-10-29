@@ -13,3 +13,5 @@
 - Map uses MapLibre GL v4 loaded client-only with OpenFreeMap tiles; v6 worker breaks under Vite dev.
 - Territory boundary is `src/data/boundary.json` (OSM relation 5522180); places must fall inside it.
 - Trajectories come from a street router (`src/lib/trajectory.ts`), never straight lines.
+- Map navigation bounds are derived in `src/data/limites.ts`; route request generations in Atlas prevent stale asynchronous results from changing the selection.
+- Extra place photos use a local opt-in slideshow with one image element, next-only preload and a canvas pixel snapshot for crossfade; keep playback cleanup tied to the selected place.
