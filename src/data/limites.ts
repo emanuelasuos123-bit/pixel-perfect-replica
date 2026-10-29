@@ -6,10 +6,14 @@ export const LESTE = 0.006;
 export const SUL = 0.009;
 export const NORTE = 0.003;
 
-export const caixaTerritorio = territory.geometry.coordinates[0].reduce(
-  (b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)],
+export const caixaTerritorio = (territory.geometry.coordinates[0] ?? []).reduce<[number, number, number, number]>(
+  (b, point) => {
+    const [x, y] = point;
+    if (x === undefined || y === undefined) return b;
+    return [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)];
+  },
   [180, 90, -180, -90],
-) as [number, number, number, number];
+);
 
 // Limite de navegação ampliado ao redor do contorno real do território.
 export const caixaLimite: [number, number, number, number] = [

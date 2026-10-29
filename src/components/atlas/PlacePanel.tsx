@@ -46,6 +46,7 @@ function Photos({ photos, name }: { photos: Media[]; name: string }) {
   useEffect(() => {
     if (!opened || photos.length < 2) return;
     const next = photos[(index + 1) % photos.length];
+    if (!next) return;
     const preload = new Image();
     preload.decoding = "async";
     preload.src = next.url;
