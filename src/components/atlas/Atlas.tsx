@@ -61,6 +61,8 @@ export function Atlas() {
           d.addEventListener("click", (e) => { e.stopPropagation(); select(p); });
           markers.current[p.id] = d;
           created.push(new ml.Marker({ element: d }).setLngLat(p.coords).addTo(m));
+          // MapLibre define um rótulo genérico ao adicionar o marcador.
+          d.setAttribute("aria-label", p.name);
         });
       });
     });
@@ -120,7 +122,7 @@ export function Atlas() {
     <div className="fixed inset-0 overflow-hidden bg-background">
       <div className="absolute inset-0"><div ref={el} className="h-full w-full" /></div>
 
-      {/* Title + search */}
+      {/* Cabeçalho e orientação */}
       <div className="pointer-events-none absolute left-4 top-4 z-10 flex max-w-[calc(100%-2rem)] flex-col gap-3 md:left-6 md:top-6">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">Cybercartografia</p>
