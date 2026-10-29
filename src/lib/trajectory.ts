@@ -7,7 +7,7 @@ export async function streetPath(from: [number, number], to: [number, number]): 
   const cached = cache.get(key);
   if (cached) return cached;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUTOUT_MS_PLACEHOLDER);
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const url = `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${from.join(",")};${to.join(",")}?overview=full&geometries=geojson`;
     const r = await fetch(url, { signal: controller.signal });

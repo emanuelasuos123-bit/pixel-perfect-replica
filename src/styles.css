@@ -73,6 +73,10 @@
   background: var(--glass);
   backdrop-filter: blur(14px);
   border: 1px solid var(--border);
+  @media (max-width: 767px) {
+    background: oklch(from var(--glass) l c h / 0.92);
+    backdrop-filter: none;
+  }
 }
 
 .atlas-marker {
@@ -83,6 +87,15 @@
   transition: opacity .5s, transform .4s, background .3s;
 }
 .atlas-marker:hover { transform: scale(1.35); }
+.atlas-marker::after {
+  content: "";
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+}
 .atlas-marker[data-centro="true"] {
   width: 20px; height: 20px; background: var(--accent);
   box-shadow: 0 0 0 6px oklch(0.82 0.12 75 / 30%), 0 0 26px oklch(0.82 0.12 75 / 50%);
