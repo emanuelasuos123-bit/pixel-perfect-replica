@@ -17,7 +17,7 @@ const GIRO_MAXIMO = 35;
 const INCLINACAO_MAXIMA = 60;
 // A inclinação permitida cresce com o zoom: afastado inclina um pouco menos (a vista alcança
 // mais longe), aproximado inclina até o máximo. O centro do mapa já fica preso à área de foco.
-const INCLINACAO_AFASTADO = 48;
+const INCLINACAO_AFASTADO = 60;
 const ZOOM_SEM_INCLINAR = 15.0; // até aqui vale só a inclinação do afastado
 const ZOOM_INCLINACAO_TOTAL = 17.2; // a partir daqui, a inclinação máxima
 // Zoom máximo: impede aproximar até ver uma única casa.
