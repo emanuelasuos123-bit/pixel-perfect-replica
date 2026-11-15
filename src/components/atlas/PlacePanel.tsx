@@ -171,10 +171,10 @@ export function PlacePanel({ place, onClose }: { place: Place; onClose: () => vo
       </div>
 
       <div className="space-y-5 px-6 pt-5">
+        {images.length > 1 && <Section title="Carrossel de fotos"><Photos key={place.id} photos={images.slice(1)} name={place.name} /></Section>}
         {place.description && <Section title="Importância para a comunidade"><TextoLongo text={place.description} /></Section>}
         {place.history && <Section title="História"><TextoLongo text={place.history} /></Section>}
         {!place.description && !place.history && <p className="text-sm text-muted-foreground">Ainda reunindo informações sobre este lugar.</p>}
-        {images.length > 1 && <Section title="Carrossel de fotos"><Photos key={place.id} photos={images.slice(1)} name={place.name} /></Section>}
         {rel.people.length > 0 && <Section title="Pessoas relacionadas"><ul className="text-sm">{rel.people.map((p) => <li key={p.id}>{p.name}{p.role && ` — ${p.role}`}</li>)}</ul></Section>}
         {rel.projects.length > 0 && <Section title="Projetos relacionados"><ul className="text-sm">{rel.projects.map((p) => <li key={p.id}>{p.name}</li>)}</ul></Section>}
         {SHOW_VIDEO && videos.length > 0 && <Section title="Vídeo">{videos.map((v) => <video key={v.url} src={v.url} controls preload="none" className="w-full rounded" />)}</Section>}

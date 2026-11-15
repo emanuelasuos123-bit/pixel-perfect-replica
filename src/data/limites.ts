@@ -33,26 +33,27 @@ const foco: [number, number][] = [
   [-38.5598, -3.71],
 ];
 
-// Contorno externo da área escurecida: o foco "engordado" cerca de 250 m.
+// Contorno externo da área escurecida: o foco "engordado" cerca de 500 m.
+// Entre o foco e este contorno o mapa aparece escurecido; depois dele, fica coberto.
 const oculta: [number, number][] = [
-  [-38.561729, -3.714366],
-  [-38.557019, -3.716223],
-  [-38.554677, -3.716659],
-  [-38.552473, -3.716789],
-  [-38.550633, -3.71673],
-  [-38.548793, -3.717004],
-  [-38.546781, -3.7172],
-  [-38.544613, -3.71744],
-  [-38.541466, -3.717198],
-  [-38.537618, -3.714471],
-  [-38.542358, -3.711048],
-  [-38.544048, -3.709921],
-  [-38.54424, -3.707621],
-  [-38.548676, -3.704171],
-  [-38.552942, -3.701245],
-  [-38.557578, -3.701863],
-  [-38.560587, -3.705015],
-  [-38.562077, -3.709734],
+  [-38.563866, -3.715952],
+  [-38.55764, -3.718406],
+  [-38.55495, -3.718907],
+  [-38.552504, -3.719052],
+  [-38.550763, -3.718996],
+  [-38.549066, -3.719249],
+  [-38.547013, -3.719449],
+  [-38.544651, -3.719711],
+  [-38.540891, -3.719422],
+  [-38.534436, -3.714542],
+  [-38.541217, -3.709095],
+  [-38.541896, -3.708642],
+  [-38.54208, -3.706442],
+  [-38.547351, -3.702342],
+  [-38.552385, -3.69889],
+  [-38.558656, -3.699726],
+  [-38.562574, -3.70383],
+  [-38.564354, -3.709467],
 ];
 
 const fechar = (anel: [number, number][]): [number, number][] => [...anel, anel[0] as [number, number]];
@@ -73,10 +74,10 @@ export const caixaFoco = foco.reduce<[number, number, number, number]>(
 );
 
 // Folgas (em graus) da caixa de navegação ao redor da área de foco.
-export const OESTE = 0.002;
-export const LESTE = 0.002;
-export const SUL = 0.0026;
-export const NORTE = 0.002;
+export const OESTE = 0.0045;
+export const LESTE = 0.0045;
+export const SUL = 0.0050;
+export const NORTE = 0.0045;
 
 // O MapLibre só aceita caixa retangular para limitar o arraste e o afastamento (zoom out).
 export const caixaLimite: [number, number, number, number] = [
