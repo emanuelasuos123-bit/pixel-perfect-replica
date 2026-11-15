@@ -67,22 +67,20 @@ export function Atlas() {
       // Girar fica limitado: a câmera nunca vira para o lado da cidade/mar aberto.
       m.touchZoomRotate.disableRotation();
       m.keyboard.disableRotation();
-      m.on("rotate", () => {
-        const min = ORIENTACAO_BASE - GIRO_MAXIMO;
-        const max = ORIENTACAO_BASE + GIRO_MAXIMO;
+      // Mantém o centro dentro da área de foco e o giro dentro do limite. Aplicado ao SOLTAR o gesto (e não durante o arrasto, o que
+      // interromperia a inclinação): o mapa volta suavemente para dentro do permitido.
+      m.on("moveend", () => {
+        const c = m.getCenter();
+        const alvo = limitarAoAnel([c.lng, c.lat], areaFocoAnel);
+        const foraDoFoco = alvo[0] !== c.lng || alvo[1] !== c.lat;
         const b = m.getBearing();
-        if (b < min) m.setBearing(min);
-        else if (b > max) m.setBearing(max);
+        const giro = Math.min(ORIENTACAO_BASE + GIRO_MAXIMO, Math.max(ORIENTACAO_BASE - GIRO_MAXIMO, b));
+        if (foraDoFoco || giro !== b) {
+          m.easeTo({ ...(foraDoFoco ? { center: alvo } : {}), bearing: giro, duration: 350 });
+        }
       });
       // Tocar/clicar no mapa (sem arrastar) fecha o painel. Arrastar apenas move o mapa:
       // o MapLibre não dispara "click" quando houve arrasto.
-      // Segura o centro do mapa dentro da área de foco: assim a câmera não "escapa" para a
-      // área escura de fora, nem com o mapa inclinado.
-      m.on("move", () => {
-        const c = m.getCenter();
-        const alvo = limitarAoAnel([c.lng, c.lat], areaFocoAnel);
-        if (alvo[0] !== c.lng || alvo[1] !== c.lat) m.setCenter(alvo);
-      });
       m.on("click", (e) => {
         const target = e.originalEvent?.target as HTMLElement | null;
         if (target?.closest?.(".atlas-marker")) return; // clique em um ponto não fecha
