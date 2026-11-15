@@ -1,20 +1,32 @@
 import { useEffect, useRef, useState } from "react";
-import type { Map as MLMap, Marker, GeoJSONSource } from "maplibre-gl";
+import type { Map as MLMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { CENTER, places, territory, type Place } from "@/data/atlas";
-import { caixaTerritorio as bounds, caixaLimite } from "@/data/limites";
+import { places, type Place } from "@/data/atlas";
+import { areaFoco, areaFocoAnel, areaOcultaAnel, caixaFoco as bounds, caixaLimite } from "@/data/limites";
 import { mapStyle } from "./mapStyle";
-import { streetPath } from "@/lib/trajectory";
 import { PlacePanel } from "./PlacePanel";
 import { Welcome, hasSeenWelcome, markWelcomeSeen } from "./Welcome";
 
-// Máscara escura fora do território. A área do Polo fica depois da linha, então a máscara fica desligada.
-// Troque para true para escurecer de novo (a visão praia→cidade pesa mais com ela ligada).
-const MOSTRAR_MASCARA = false;
-// Troque para true para permitir girar o mapa (a visão cidade/praia mostra Fortaleza inteira e pesa).
-const PERMITIR_GIRAR = false;
+// ---- Ajustes de navegação (mude aqui, sem mexer no resto) ----
+// Direção da câmera: sempre olhando do território para o mar.
+const ORIENTACAO_BASE = -12;
+// Quanto o usuário pode girar para cada lado (graus). Com 0 o giro fica travado.
+// Girar muito mostraria a visão mar→cidade, que enxerga Fortaleza inteira e pesa.
+const GIRO_MAXIMO = 35;
+// Inclinação máxima (graus). Valores menores pesam menos.
+const INCLINACAO_MAXIMA = 55;
+// Zoom máximo: impede aproximar até ver uma única casa.
+const ZOOM_MAXIMO = 17.5;
+// Escurecimento da área ao redor do foco (0 = nada, 1 = preto).
+const OPACIDADE_ESCURA = 0.62;
 
-const ring = territory.geometry.coordinates[0] as [number, number][];
+const MUNDO: [number, number][] = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
+// Polígono "mundo inteiro" com um buraco no formato da área indicada.
+const mascara = (buraco: [number, number][]) => ({
+  type: "Feature" as const,
+  properties: {},
+  geometry: { type: "Polygon" as const, coordinates: [MUNDO, buraco] },
+});
 
 export function Atlas() {
   const el = useRef<HTMLDivElement>(null);
@@ -23,7 +35,6 @@ export function Atlas() {
   const [active, setActive] = useState<Place | null>(null);
   const selectedId = useRef<string | null>(null);
   const requestVersion = useRef(0);
-  const routeAnim = useRef<number>(0);
   const [welcomeOpen, setWelcomeOpen] = useState(() => !hasSeenWelcome());
   const [orientationOpen, setOrientationOpen] = useState(false);
   // Guarda a versão mais recente da ação "tocou no mapa", pois o mapa é criado uma única vez.
@@ -35,7 +46,7 @@ export function Atlas() {
   };
 
   const overview = () =>
-    map.current?.fitBounds(bounds, { padding: 60, pitch: 20, bearing: -12, duration: 1600 });
+    map.current?.fitBounds(bounds, { padding: 60, pitch: 20, bearing: ORIENTACAO_BASE, duration: 1600 });
 
   useEffect(() => {
     let cancelled = false;
@@ -43,13 +54,19 @@ export function Atlas() {
     import("maplibre-gl").then((mod) => {
       const ml = (mod as unknown as { default?: typeof mod }).default ?? mod;
       if (cancelled || !el.current) return;
-      const m = new ml.Map({ container: el.current, style: mapStyle, bounds, maxBounds: caixaLimite, minZoom: 12.5, fitBoundsOptions: { padding: 60 }, pitch: 20, bearing: -12, maxPitch: 60, attributionControl: { compact: true } });
+      const m = new ml.Map({ container: el.current, style: mapStyle, bounds, maxBounds: caixaLimite, minZoom: 12.5, maxZoom: ZOOM_MAXIMO, fitBoundsOptions: { padding: 60 }, pitch: 20, bearing: ORIENTACAO_BASE, maxPitch: INCLINACAO_MAXIMA, attributionControl: { compact: true } });
       map.current = m;
-      if (!PERMITIR_GIRAR) {
-        m.dragRotate.disable();
-        m.touchZoomRotate.disableRotation();
-        m.keyboard.disableRotation();
-      }
+      // Inclinar pode (dois dedos para cima/baixo no celular; botão direito no computador).
+      // Girar fica limitado: a câmera nunca vira para o lado da cidade/mar aberto.
+      m.touchZoomRotate.disableRotation();
+      m.keyboard.disableRotation();
+      m.on("rotate", () => {
+        const min = ORIENTACAO_BASE - GIRO_MAXIMO;
+        const max = ORIENTACAO_BASE + GIRO_MAXIMO;
+        const b = m.getBearing();
+        if (b < min) m.setBearing(min);
+        else if (b > max) m.setBearing(max);
+      });
       // Tocar/clicar no mapa (sem arrastar) fecha o painel. Arrastar apenas move o mapa:
       // o MapLibre não dispara "click" quando houve arrasto.
       m.on("click", (e) => {
@@ -58,17 +75,16 @@ export function Atlas() {
         mapClickRef.current();
       });
       m.on("load", () => {
-        m.addSource("mask", {
-          type: "geojson",
-          data: { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], ring] } },
-        });
-        m.addLayer({ id: "mask", type: "fill", source: "mask", layout: { visibility: MOSTRAR_MASCARA ? "visible" : "none" }, paint: { "fill-color": "#050a14", "fill-opacity": 0.62 } }, "road-labels");
-        m.addSource("territory", { type: "geojson", data: territory });
+        // Área ao redor do foco: escura, mas ainda visível.
+        m.addSource("mask", { type: "geojson", data: mascara(areaFocoAnel) });
+        m.addLayer({ id: "mask", type: "fill", source: "mask", paint: { "fill-color": "#050a14", "fill-opacity": OPACIDADE_ESCURA } }, "road-labels");
+        // Mais longe: coberta por completo (o usuário não vê).
+        m.addSource("mask-oculta", { type: "geojson", data: mascara(areaOcultaAnel) });
+        m.addLayer({ id: "mask-oculta", type: "fill", source: "mask-oculta", paint: { "fill-color": "#0b1424", "fill-opacity": 1 } });
+        // Contorno luminoso do limite.
+        m.addSource("territory", { type: "geojson", data: areaFoco });
         m.addLayer({ id: "territory-glow", type: "line", source: "territory", paint: { "line-color": "#6cc4ff", "line-width": 8, "line-blur": 8, "line-opacity": 0.35 } });
         m.addLayer({ id: "territory-line", type: "line", source: "territory", paint: { "line-color": "#8fd3ff", "line-width": 1.4 } });
-        m.addSource("route", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-        m.addLayer({ id: "route-glow", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#f2c46b", "line-width": 9, "line-blur": 6, "line-opacity": 0.35 } });
-        m.addLayer({ id: "route", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffd98a", "line-width": 2.4 } });
 
         places.forEach((p) => {
           const d = document.createElement("div");
@@ -87,7 +103,7 @@ export function Atlas() {
         });
       });
     });
-    return () => { cancelled = true; requestVersion.current += 1; cancelAnimationFrame(routeAnim.current); created.forEach((x) => x.remove()); map.current?.remove(); map.current = null; };
+    return () => { cancelled = true; requestVersion.current += 1; created.forEach((x) => x.remove()); map.current?.remove(); map.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -96,46 +112,26 @@ export function Atlas() {
     places.forEach((p) => {
       const d = markers.current[p.id];
       if (!d) return;
-      d.dataset["state"] = active ? (p.id === active.id ? "active" : p.id === "centro" ? "" : "dim") : "";
+      d.dataset["state"] = active ? (p.id === active.id ? "active" : "dim") : "";
     });
   }, [active]);
 
-  const setRoute = (coords: [number, number][]) => {
-    const src = map.current?.getSource("route") as GeoJSONSource | undefined;
-    src?.setData({ type: "FeatureCollection", features: coords.length > 1 ? [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } }] : [] });
-  };
-
-  async function select(p: Place) {
-    const version = ++requestVersion.current;
+  function select(p: Place) {
+    requestVersion.current += 1;
     selectedId.current = p.id;
     setActive(p);
     setOrientationOpen(false);
-    cancelAnimationFrame(routeAnim.current);
-    setRoute([]);
     const desktop = window.innerWidth >= 768;
     map.current?.flyTo({
-      center: p.coords, zoom: 17.4, pitch: 52, bearing: -20, duration: 2000, essential: true,
+      center: p.coords, zoom: ZOOM_MAXIMO - 0.1, pitch: 52, bearing: ORIENTACAO_BASE - 8, duration: 2000, essential: true,
       padding: desktop ? { right: window.innerWidth * 0.4, left: 0, top: 0, bottom: 0 } : { bottom: window.innerHeight * 0.5, top: 0, left: 0, right: 0 },
     });
-    if (p.id === CENTER.id) return;
-    const path = await streetPath(CENTER.coords, p.coords);
-    if (!path || version !== requestVersion.current || selectedId.current !== p.id) return;
-    let i = 0;
-    const step = () => {
-      if (version !== requestVersion.current) return;
-      i += Math.max(1, Math.ceil(path.length / 60));
-      setRoute(path.slice(0, i));
-      if (i < path.length) routeAnim.current = requestAnimationFrame(step);
-    };
-    step();
   }
 
   function close() {
     requestVersion.current += 1;
     selectedId.current = null;
     setActive(null);
-    cancelAnimationFrame(routeAnim.current);
-    setRoute([]);
     map.current?.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 0 });
     overview();
   }
@@ -183,7 +179,6 @@ export function Atlas() {
       <div className={`absolute bottom-6 left-4 z-10 flex-col items-start gap-2 md:left-6 ${active ? "hidden md:flex" : "flex"}`}>
         <div className="flex gap-2">
           <button onClick={close} className="glass rounded-full px-4 py-2 text-xs font-medium hover:text-primary">Voltar ao território</button>
-          <button onClick={() => select(CENTER)} className="glass rounded-full px-4 py-2 text-xs font-medium hover:text-accent">Centro</button>
         </div>
       </div>
 

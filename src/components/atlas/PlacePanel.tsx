@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Images, Pause, Play, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { people, projects, stories, type Place, type Media } from "@/data/atlas";
 
@@ -8,13 +8,17 @@ const SHOW_VIDEO = false;
 const SHOW_STORIES = false;
 export const INTERVALO_MS = 2500;
 
+// Carrossel: a primeira foto já aparece; o visitante passa com as setas, deslizando o dedo
+// ou tocando em "Passar fotos" (que liga a troca automática). As demais só são baixadas
+// quando a pessoa começa a interagir, e sempre apenas a próxima.
 function Photos({ photos, name }: { photos: Media[]; name: string }) {
-  const [opened, setOpened] = useState(false);
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [touched, setTouched] = useState(false);
   const [reduced, setReduced] = useState(true);
   const image = useRef<HTMLImageElement>(null);
   const previous = useRef<HTMLCanvasElement>(null);
+  const startX = useRef<number | null>(null);
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -37,47 +41,70 @@ function Photos({ photos, name }: { photos: Media[]; name: string }) {
     setIndex((i) => (i + offset + photos.length) % photos.length);
   }
 
-  useEffect(() => {
-    if (!opened || paused || reduced || photos.length < 2) return;
-    const timer = window.setInterval(() => advance(1), INTERVALO_MS);
-    return () => window.clearInterval(timer);
-  }, [opened, paused, reduced, photos.length, index]);
+  function go(offset: number) {
+    setTouched(true);
+    advance(offset);
+  }
 
   useEffect(() => {
-    if (!opened || photos.length < 2) return;
+    if (!playing || reduced || photos.length < 2) return;
+    const timer = window.setInterval(() => advance(1), INTERVALO_MS);
+    return () => window.clearInterval(timer);
+  }, [playing, reduced, photos.length, index]);
+
+  useEffect(() => {
+    if (!touched || photos.length < 2) return;
     const next = photos[(index + 1) % photos.length];
     if (!next) return;
     const preload = new Image();
     preload.decoding = "async";
     preload.src = next.url;
     return () => { preload.src = ""; };
-  }, [opened, index, photos]);
+  }, [touched, index, photos]);
 
   const current = photos[index];
   if (!current) return null;
-  if (!opened) return (
-    <Button variant="outline" onClick={() => setOpened(true)} className="h-auto min-h-11 w-full whitespace-normal py-4">
-      <Images aria-hidden="true" /> Toque para ver as fotos ({photos.length})
-    </Button>
-  );
+  const many = photos.length > 1;
 
   return (
     <div>
-      <Button variant="ghost" onClick={() => setPaused((p) => !p)} disabled={photos.length === 1 || reduced}
-        aria-label={paused ? "Retomar fotos" : "Pausar fotos"} aria-pressed={paused}
-        className="relative block aspect-video h-auto w-full overflow-hidden rounded-lg bg-muted p-0 hover:bg-muted disabled:opacity-100">
-        <canvas ref={previous} width={960} height={540} aria-hidden="true" className="absolute inset-0 h-full w-full" />
+      <div
+        role="group"
+        aria-label={`Fotos de ${name}`}
+        className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted"
+        style={{ touchAction: "pan-y" }}
+        onPointerDown={(e) => { startX.current = e.clientX; }}
+        onPointerUp={(e) => {
+          if (startX.current === null) return;
+          const dx = e.clientX - startX.current;
+          startX.current = null;
+          if (many && Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+        }}
+        onPointerCancel={() => { startX.current = null; }}
+      >
+        <canvas ref={previous} width={960} height={720} aria-hidden="true" className="absolute inset-0 h-full w-full" />
         <img ref={image} key={current.url} src={current.url} alt={current.caption || `Foto ${index + 1} de ${name}`}
-          loading="lazy" decoding="async" className="relative h-full w-full object-cover animate-in fade-in duration-500 motion-reduce:animate-none" />
-        {photos.length > 1 && !reduced && <span className="glass absolute bottom-2 right-2 rounded-full p-2">{paused ? <Play /> : <Pause />}</span>}
-      </Button>
-      {photos.length > 1 && (
-        <div className="flex min-h-11 items-center justify-between gap-2">
-          <Button variant="ghost" size="icon" className="h-11 w-11" aria-label="Foto anterior" onClick={() => advance(-1)}><ChevronLeft /></Button>
-          <div className="flex flex-wrap justify-center gap-1" aria-label={`Foto ${index + 1} de ${photos.length}`}>
-            {photos.map((photo, i) => <span key={`${photo.url}-${i}`} aria-hidden="true" className={`h-2 w-2 rounded-full ${i === index ? "bg-primary" : "bg-muted-foreground/40"}`} />)}
-          </div>
-          <Button variant="ghost" size="icon" className="h-11 w-11" aria-label="Próxima foto" onClick={() => advance(1)}><ChevronRight /></Button>
+          loading="lazy" decoding="async" draggable={false} className="relative h-full w-full select-none object-cover animate-in fade-in duration-500 motion-reduce:animate-none" />
+        {many && (
+          <>
+            <Button variant="ghost" size="icon" aria-label="Foto anterior" onClick={() => go(-1)}
+              className="glass absolute left-2 top-1/2 h-11 w-11 -translate-y-1/2 rounded-full"><ChevronLeft /></Button>
+            <Button variant="ghost" size="icon" aria-label="Próxima foto" onClick={() => go(1)}
+              className="glass absolute right-2 top-1/2 h-11 w-11 -translate-y-1/2 rounded-full"><ChevronRight /></Button>
+            <span className="glass absolute left-2 top-2 rounded-full px-3 py-1 text-xs font-medium">{index + 1} / {photos.length}</span>
+            {!reduced && (
+              <Button variant="ghost" onClick={() => { setTouched(true); setPlaying((p) => !p); }}
+                aria-label={playing ? "Pausar fotos" : "Passar fotos"} aria-pressed={playing}
+                className="glass absolute bottom-2 right-2 h-11 gap-2 rounded-full px-4 text-xs font-semibold">
+                {playing ? <><Pause aria-hidden="true" /> Pausar</> : <><Play aria-hidden="true" /> Passar fotos</>}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+      {many && (
+        <div className="mt-3 flex flex-wrap justify-center gap-1.5" aria-hidden="true">
+          {photos.map((photo, i) => <span key={`${photo.url}-${i}`} className={`h-2 rounded-full transition-all ${i === index ? "w-5 bg-primary" : "w-2 bg-muted-foreground/40"}`} />)}
         </div>
       )}
       {(current.caption || current.source?.label) && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{[current.caption, current.source?.label].filter(Boolean).join(" · ")}</p>}
@@ -124,14 +151,26 @@ export function PlacePanel({ place, onClose }: { place: Place; onClose: () => vo
   const images = place.media.filter((m) => m.type === "image");
   const videos = place.media.filter((m) => m.type === "video");
 
-  return (
-    <aside aria-label={place.name} className="glass absolute inset-x-0 bottom-0 z-20 max-h-[60dvh] overflow-y-auto overscroll-contain rounded-t-2xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-500 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[40vw] md:rounded-none md:slide-in-from-right">
-      <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border md:hidden" />
-      <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="absolute right-3 top-3 h-11 w-11 text-muted-foreground hover:text-foreground"><X /></Button>
-      <h2 className="mt-1 pr-10 font-display text-2xl font-semibold leading-tight">{place.name}</h2>
+  const hero = images[0];
 
-      <div className="mt-5 space-y-5">
-        {images[0] && <img src={images[0].url} alt={images[0].caption || place.name} loading="lazy" decoding="async" className="aspect-video w-full rounded-lg object-cover" />}
+  return (
+    <aside aria-label={place.name} className="glass absolute inset-x-0 bottom-0 z-20 max-h-[60dvh] overflow-y-auto overscroll-contain rounded-t-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-500 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[40vw] md:rounded-none md:slide-in-from-right">
+      {/* Banner: a foto principal ocupa toda a largura; o topo escurece (azul-marinho) para o nome aparecer bem. */}
+      <div className="relative">
+        {hero ? (
+          <>
+            <img src={hero.url} alt={hero.caption || place.name} decoding="async" className="block aspect-[16/10] w-full object-cover md:aspect-[4/3]" />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-3/5 bg-gradient-to-b from-[#0a1830] via-[#0a1830]/70 to-transparent" />
+          </>
+        ) : (
+          <div className="h-24" />
+        )}
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 flex justify-center pt-2 md:hidden"><span className="h-1 w-10 rounded-full bg-white/40" /></div>
+        <h2 className="absolute inset-x-0 top-0 pb-3 pl-6 pr-16 pt-7 font-display text-4xl font-bold leading-tight tracking-tight text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.6)] md:pt-8 md:text-5xl">{place.name}</h2>
+        <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="absolute right-3 top-3 h-11 w-11 rounded-full bg-black/30 text-white hover:bg-black/50 hover:text-white"><X /></Button>
+      </div>
+
+      <div className="space-y-5 px-6 pt-5">
         {place.description && <Section title="Importância para a comunidade"><TextoLongo text={place.description} /></Section>}
         {place.history && <Section title="História"><TextoLongo text={place.history} /></Section>}
         {!place.description && !place.history && <p className="text-sm text-muted-foreground">Ainda reunindo informações sobre este lugar.</p>}

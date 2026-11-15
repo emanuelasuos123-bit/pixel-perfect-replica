@@ -1,36 +1,45 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { caixaLimite, caixaTerritorio, OESTE, LESTE, SUL, NORTE } from "@/data/limites";
+import { areaFocoAnel, areaOcultaAnel, caixaFoco, caixaLimite, dentroDoAnel } from "@/data/limites";
 import { PlacePanel, INTERVALO_MS } from "@/components/atlas/PlacePanel";
-import type { Place } from "@/data/atlas";
+import { places, type Place } from "@/data/atlas";
 
 const place: Place = { id: "test", name: "Teste", category: "cultura", coords: [0, 0], media: [], people: [], projects: [], stories: [], sources: [] };
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-describe("Navigation margins", () => {
-  it("expands west by 0.009 degrees", () => { expect(OESTE).toBe(0.009); expect(caixaLimite[0]).toBeCloseTo(caixaTerritorio[0] - 0.009, 10); });
-  it("expands east by 0.006 degrees", () => { expect(LESTE).toBe(0.006); expect(caixaLimite[2]).toBeCloseTo(caixaTerritorio[2] + 0.006, 10); });
-  it("expands south by 0.009 degrees", () => { expect(SUL).toBe(0.009); expect(caixaLimite[1]).toBeCloseTo(caixaTerritorio[1] - 0.009, 10); });
-  it("expands north by 0.003 degrees", () => { expect(NORTE).toBe(0.003); expect(caixaLimite[3]).toBeCloseTo(caixaTerritorio[3] + 0.003, 10); });
+describe("Navigation limits", () => {
+  it("keeps every place inside the bright focus area", () => {
+    for (const p of places) expect(dentroDoAnel(p.coords, areaFocoAnel), p.name).toBe(true);
+  });
+  it("keeps the focus area inside the dimmed area and the navigation box", () => {
+    for (const point of areaFocoAnel) expect(dentroDoAnel(point, areaOcultaAnel)).toBe(true);
+    expect(caixaLimite[0]).toBeLessThan(caixaFoco[0]);
+    expect(caixaLimite[1]).toBeLessThan(caixaFoco[1]);
+    expect(caixaLimite[2]).toBeGreaterThan(caixaFoco[2]);
+    expect(caixaLimite[3]).toBeGreaterThan(caixaFoco[3]);
+  });
 });
 
-describe("Opt-in photos", () => {
+describe("Photo carousel", () => {
   const withPhotos = { ...place, media: [0, 1, 2, 3].map((n) => ({ type: "image" as const, url: `https://example.test/${n}.jpg`, caption: `Photo ${n}` })) };
-  it("does not load extra photos before opening and preloads only the next", () => {
+  it("shows the first carousel photo at once and preloads nothing until interaction", () => {
     const requests: string[] = [];
     vi.stubGlobal("Image", class { decoding = ""; set src(v: string) { if (v) requests.push(v); } });
     const { container } = render(<PlacePanel place={withPhotos} onClose={() => {}} />);
-    expect(container.querySelectorAll("img")).toHaveLength(1);
+    expect(container.querySelectorAll("img")).toHaveLength(2); // banner + 1ª foto do carrossel
+    expect(screen.getByAltText("Photo 1")).toBeTruthy();
     expect(requests).toEqual([]);
-    fireEvent.click(screen.getByRole("button", { name: /Toque para ver/ }));
-    expect(container.querySelectorAll("img")).toHaveLength(2);
-    expect(requests).toEqual(["https://example.test/2.jpg"]);
+    fireEvent.click(screen.getByRole("button", { name: "Próxima foto" }));
+    expect(screen.getByAltText("Photo 2")).toBeTruthy();
+    expect(requests).toEqual(["https://example.test/3.jpg"]);
   });
-  it("advances at 2500ms, pauses on touch and cleans up on unmount", () => {
+  it("starts at 2500ms after tapping play, pauses and cleans up on unmount", () => {
     vi.useFakeTimers();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     const { unmount } = render(<PlacePanel place={withPhotos} onClose={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /Toque para ver/ }));
+    act(() => vi.advanceTimersByTime(5000));
+    expect(screen.getByAltText("Photo 1")).toBeTruthy(); // não troca sozinho antes do toque
+    fireEvent.click(screen.getByRole("button", { name: "Passar fotos" }));
     expect(INTERVALO_MS).toBe(2500);
     act(() => vi.advanceTimersByTime(2499));
     expect(screen.getByAltText("Photo 1")).toBeTruthy();
@@ -46,7 +55,7 @@ describe("Opt-in photos", () => {
     vi.useFakeTimers();
     vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true, addEventListener: () => {}, removeEventListener: () => {} } as unknown as MediaQueryList);
     render(<PlacePanel place={withPhotos} onClose={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /Toque para ver/ }));
+    expect(screen.queryByRole("button", { name: "Passar fotos" })).toBeNull();
     act(() => vi.advanceTimersByTime(7500));
     expect(screen.getByAltText("Photo 1")).toBeTruthy();
   });
