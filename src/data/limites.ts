@@ -98,3 +98,29 @@ export function dentroDoAnel(ponto: [number, number], anel: [number, number][]):
   }
   return dentro;
 }
+
+// Ponto mais próximo do anel quando o ponto está fora dele (usado para segurar o centro do mapa
+// dentro da área de foco). Se o ponto já está dentro, devolve o próprio ponto.
+export function limitarAoAnel(ponto: [number, number], anel: [number, number][]): [number, number] {
+  if (dentroDoAnel(ponto, anel)) return ponto;
+  const kx = Math.cos((-3.712 * Math.PI) / 180); // longitude "encolhe" com a latitude
+  let melhor: [number, number] = ponto;
+  let menor = Infinity;
+  for (let i = 0; i < anel.length - 1; i++) {
+    const [ax, ay] = anel[i] as [number, number];
+    const [bx, by] = anel[i + 1] as [number, number];
+    const dx = (bx - ax) * kx;
+    const dy = by - ay;
+    const comp = dx * dx + dy * dy;
+    let t = comp === 0 ? 0 : (((ponto[0] - ax) * kx) * dx + (ponto[1] - ay) * dy) / comp;
+    t = Math.max(0, Math.min(1, t));
+    const qx = ax + (bx - ax) * t;
+    const qy = ay + (by - ay) * t;
+    const d = ((ponto[0] - qx) * kx) ** 2 + (ponto[1] - qy) ** 2;
+    if (d < menor) {
+      menor = d;
+      melhor = [qx, qy];
+    }
+  }
+  return melhor;
+}

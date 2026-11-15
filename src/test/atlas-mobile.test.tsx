@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { areaFocoAnel, areaOcultaAnel, caixaFoco, caixaLimite, dentroDoAnel } from "@/data/limites";
+import { areaFocoAnel, areaOcultaAnel, caixaFoco, caixaLimite, dentroDoAnel, limitarAoAnel } from "@/data/limites";
 import { PlacePanel, INTERVALO_MS } from "@/components/atlas/PlacePanel";
 import { places, type Place } from "@/data/atlas";
 
@@ -17,6 +17,18 @@ describe("Navigation limits", () => {
     expect(caixaLimite[1]).toBeLessThan(caixaFoco[1]);
     expect(caixaLimite[2]).toBeGreaterThan(caixaFoco[2]);
     expect(caixaLimite[3]).toBeGreaterThan(caixaFoco[3]);
+  });
+});
+
+describe("Camera center limit", () => {
+  it("keeps points inside the focus area and pulls outside points back to its edge", () => {
+    const dentro: [number, number] = [-38.5535, -3.7102];
+    expect(limitarAoAnel(dentro, areaFocoAnel)).toEqual(dentro);
+    const fora = limitarAoAnel([-38.6, -3.71], areaFocoAnel);
+    expect(fora[0]).toBeGreaterThan(-38.6);
+    const c = areaFocoAnel.reduce((a, p) => [a[0] + p[0] / areaFocoAnel.length, a[1] + p[1] / areaFocoAnel.length], [0, 0]) as [number, number];
+    const poucoParaDentro: [number, number] = [fora[0] + (c[0] - fora[0]) * 0.02, fora[1] + (c[1] - fora[1]) * 0.02];
+    expect(dentroDoAnel(poucoParaDentro, areaFocoAnel)).toBe(true);
   });
 });
 

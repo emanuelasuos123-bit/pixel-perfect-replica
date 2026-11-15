@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Map as MLMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { places, type Place } from "@/data/atlas";
-import { areaFoco, areaFocoAnel, areaOcultaAnel, caixaFoco as bounds, caixaLimite } from "@/data/limites";
+import { areaFoco, areaFocoAnel, areaOcultaAnel, caixaFoco as bounds, caixaLimite, limitarAoAnel } from "@/data/limites";
 import { mapStyle } from "./mapStyle";
 import { PlacePanel } from "./PlacePanel";
 import { Welcome, hasSeenWelcome, markWelcomeSeen } from "./Welcome";
@@ -14,7 +14,7 @@ const ORIENTACAO_BASE = -12;
 // Girar muito mostraria a visão mar→cidade, que enxerga Fortaleza inteira e pesa.
 const GIRO_MAXIMO = 35;
 // Inclinação máxima (graus). Valores menores pesam menos.
-const INCLINACAO_MAXIMA = 55;
+const INCLINACAO_MAXIMA = 50;
 // A inclinação permitida cresce com o zoom: afastado quase não inclina (a vista alcançaria
 // longe demais e mostraria a área coberta); aproximado inclina até o máximo.
 const INCLINACAO_AFASTADO = 15;
@@ -76,6 +76,13 @@ export function Atlas() {
       });
       // Tocar/clicar no mapa (sem arrastar) fecha o painel. Arrastar apenas move o mapa:
       // o MapLibre não dispara "click" quando houve arrasto.
+      // Segura o centro do mapa dentro da área de foco: assim a câmera não "escapa" para a
+      // área escura de fora, nem com o mapa inclinado.
+      m.on("move", () => {
+        const c = m.getCenter();
+        const alvo = limitarAoAnel([c.lng, c.lat], areaFocoAnel);
+        if (alvo[0] !== c.lng || alvo[1] !== c.lat) m.setCenter(alvo);
+      });
       m.on("click", (e) => {
         const target = e.originalEvent?.target as HTMLElement | null;
         if (target?.closest?.(".atlas-marker")) return; // clique em um ponto não fecha
