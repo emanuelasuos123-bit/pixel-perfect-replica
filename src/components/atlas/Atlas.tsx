@@ -8,6 +8,12 @@ import { streetPath } from "@/lib/trajectory";
 import { PlacePanel } from "./PlacePanel";
 import { Welcome, hasSeenWelcome, markWelcomeSeen } from "./Welcome";
 
+// Máscara escura fora do território. A área do Polo fica depois da linha, então a máscara fica desligada.
+// Troque para true para escurecer de novo (a visão praia→cidade pesa mais com ela ligada).
+const MOSTRAR_MASCARA = false;
+// Troque para true para permitir girar o mapa (a visão cidade/praia mostra Fortaleza inteira e pesa).
+const PERMITIR_GIRAR = false;
+
 const ring = territory.geometry.coordinates[0] as [number, number][];
 
 export function Atlas() {
@@ -19,6 +25,9 @@ export function Atlas() {
   const requestVersion = useRef(0);
   const routeAnim = useRef<number>(0);
   const [welcomeOpen, setWelcomeOpen] = useState(() => !hasSeenWelcome());
+  const [orientationOpen, setOrientationOpen] = useState(false);
+  // Guarda a versão mais recente da ação "tocou no mapa", pois o mapa é criado uma única vez.
+  const mapClickRef = useRef<() => void>(() => {});
 
   const closeWelcome = () => {
     markWelcomeSeen();
@@ -36,12 +45,24 @@ export function Atlas() {
       if (cancelled || !el.current) return;
       const m = new ml.Map({ container: el.current, style: mapStyle, bounds, maxBounds: caixaLimite, minZoom: 12.5, fitBoundsOptions: { padding: 60 }, pitch: 20, bearing: -12, maxPitch: 60, attributionControl: { compact: true } });
       map.current = m;
+      if (!PERMITIR_GIRAR) {
+        m.dragRotate.disable();
+        m.touchZoomRotate.disableRotation();
+        m.keyboard.disableRotation();
+      }
+      // Tocar/clicar no mapa (sem arrastar) fecha o painel. Arrastar apenas move o mapa:
+      // o MapLibre não dispara "click" quando houve arrasto.
+      m.on("click", (e) => {
+        const target = e.originalEvent?.target as HTMLElement | null;
+        if (target?.closest?.(".atlas-marker")) return; // clique em um ponto não fecha
+        mapClickRef.current();
+      });
       m.on("load", () => {
         m.addSource("mask", {
           type: "geojson",
           data: { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], ring] } },
         });
-        m.addLayer({ id: "mask", type: "fill", source: "mask", paint: { "fill-color": "#050a14", "fill-opacity": 0.62 } }, "road-labels");
+        m.addLayer({ id: "mask", type: "fill", source: "mask", layout: { visibility: MOSTRAR_MASCARA ? "visible" : "none" }, paint: { "fill-color": "#050a14", "fill-opacity": 0.62 } }, "road-labels");
         m.addSource("territory", { type: "geojson", data: territory });
         m.addLayer({ id: "territory-glow", type: "line", source: "territory", paint: { "line-color": "#6cc4ff", "line-width": 8, "line-blur": 8, "line-opacity": 0.35 } });
         m.addLayer({ id: "territory-line", type: "line", source: "territory", paint: { "line-color": "#8fd3ff", "line-width": 1.4 } });
@@ -88,6 +109,7 @@ export function Atlas() {
     const version = ++requestVersion.current;
     selectedId.current = p.id;
     setActive(p);
+    setOrientationOpen(false);
     cancelAnimationFrame(routeAnim.current);
     setRoute([]);
     const desktop = window.innerWidth >= 768;
@@ -118,18 +140,43 @@ export function Atlas() {
     overview();
   }
 
+  // Toque no mapa: esconde a orientação e, se houver painel aberto, fecha (igual ao X).
+  mapClickRef.current = () => {
+    setOrientationOpen(false);
+    if (selectedId.current) close();
+  };
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
       <div className="absolute inset-0"><div ref={el} className="h-full w-full" /></div>
 
       {/* Cabeçalho e orientação */}
       <div className="pointer-events-none absolute left-4 top-4 z-10 flex max-w-[calc(100%-2rem)] flex-col gap-3 md:left-6 md:top-6">
-        <div>
+        <div className="[text-shadow:0_1px_8px_rgba(0,0,0,0.85)]">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">Cybercartografia</p>
           <h1 className="font-display text-3xl font-semibold md:text-4xl"><span className="md:hidden">Grande Pirambu</span><span className="hidden md:inline">Comunidade do Grande Pirambu</span></h1>
-          <p className="text-xs text-muted-foreground">Atlas do território, das pessoas e das histórias.</p>
+          <p className="text-sm font-medium text-foreground">Atlas do território, dos moradores e das histórias.</p>
         </div>
-        <p className="glass w-72 max-w-full rounded-lg px-4 py-2 text-xs leading-relaxed">Clique nos pontos para descobrir mais sobre a comunidade do Grande Pirambu!</p>
+        <div className="pointer-events-auto flex flex-col items-start gap-2">
+          <button
+            onClick={() => setOrientationOpen((o) => !o)}
+            aria-expanded={orientationOpen}
+            aria-controls="orientacao-texto"
+            className="glass flex min-h-11 items-center gap-2 rounded-full px-4 text-xs font-semibold text-accent ring-1 ring-accent/70 hover:text-foreground"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v5" />
+              <path d="M12 8h.01" />
+            </svg>
+            Orientação
+          </button>
+          {orientationOpen && (
+            <p id="orientacao-texto" className="glass w-72 max-w-full rounded-lg px-4 py-3 text-xs leading-relaxed">
+              Clique nos pontos para descobrir mais sobre a comunidade do Grande Pirambu!
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Controls */}

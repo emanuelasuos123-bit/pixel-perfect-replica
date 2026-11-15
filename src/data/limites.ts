@@ -2,7 +2,8 @@ import { territory } from "./atlas";
 
 // Folgas em graus: oeste/sul diminuem os mínimos; leste/norte aumentam os máximos.
 export const OESTE = 0.009;
-export const LESTE = 0.006;
+// Leste ampliado para incluir o ponto -3.7176084, -38.5394084 (pedido do Emanuel) com uma pequena folga.
+export const LESTE = 0.0086;
 export const SUL = 0.009;
 export const NORTE = 0.003;
 

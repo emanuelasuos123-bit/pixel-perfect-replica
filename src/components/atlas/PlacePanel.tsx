@@ -85,6 +85,27 @@ function Photos({ photos, name }: { photos: Media[]; name: string }) {
   );
 }
 
+// Texto longo, na medida certa para cada tela:
+// celular: letra 15px e só 4 linhas, com "Ler mais"; computador: texto inteiro em letra 16px.
+// A frase final de crédito ("Informações baseadas…", "Histórico elaborado…") vira uma nota pequena.
+function TextoLongo({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const corte = text.search(/\s(Informações baseadas|Histórico elaborado)/);
+  const principal = corte > 0 ? text.slice(0, corte) : text;
+  const nota = corte > 0 ? text.slice(corte).trim() : "";
+  return (
+    <div>
+      <p className={`text-[15px] leading-relaxed md:text-base md:leading-7 md:line-clamp-none ${open ? "" : "line-clamp-4"}`}>{principal}</p>
+      {principal.length > 180 && (
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="min-h-11 text-sm font-medium text-primary md:hidden">
+          {open ? "Ler menos" : "Ler mais"}
+        </button>
+      )}
+      {nota && <p className="mt-1 text-xs italic leading-relaxed text-muted-foreground">{nota}</p>}
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="border-t border-border pt-4">
@@ -111,8 +132,8 @@ export function PlacePanel({ place, onClose }: { place: Place; onClose: () => vo
 
       <div className="mt-5 space-y-5">
         {images[0] && <img src={images[0].url} alt={images[0].caption || place.name} loading="lazy" decoding="async" className="aspect-video w-full rounded-lg object-cover" />}
-        {place.description && <Section title="Importância para a comunidade"><p className="text-sm leading-relaxed">{place.description}</p></Section>}
-        {place.history && <Section title="História"><p className="text-sm leading-relaxed">{place.history}</p></Section>}
+        {place.description && <Section title="Importância para a comunidade"><TextoLongo text={place.description} /></Section>}
+        {place.history && <Section title="História"><TextoLongo text={place.history} /></Section>}
         {!place.description && !place.history && <p className="text-sm text-muted-foreground">Ainda reunindo informações sobre este lugar.</p>}
         {images.length > 1 && <Section title="Carrossel de fotos"><Photos key={place.id} photos={images.slice(1)} name={place.name} /></Section>}
         {rel.people.length > 0 && <Section title="Pessoas relacionadas"><ul className="text-sm">{rel.people.map((p) => <li key={p.id}>{p.name}{p.role && ` — ${p.role}`}</li>)}</ul></Section>}
