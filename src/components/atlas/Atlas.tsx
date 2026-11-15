@@ -17,6 +17,8 @@ const GIRO_MAXIMO = 35;
 const INCLINACAO_MAXIMA = 55;
 // Zoom máximo: impede aproximar até ver uma única casa.
 const ZOOM_MAXIMO = 17.5;
+// Folga (em níveis de zoom) abaixo da vista que mostra o limite inteiro. 0 = exatamente essa vista.
+const AFASTAMENTO_FOLGA = 0.1;
 // Escurecimento da área ao redor do foco (0 = nada, 1 = preto).
 const OPACIDADE_ESCURA = 0.62;
 
@@ -74,7 +76,15 @@ export function Atlas() {
         if (target?.closest?.(".atlas-marker")) return; // clique em um ponto não fecha
         mapClickRef.current();
       });
+      // Afastamento máximo = a vista que mostra o limite inteiro (a mesma de "Voltar ao território").
+      // Recalculado conforme o tamanho da tela, então vale para celular em pé, deitado e PC.
+      const travarAfastamento = () => {
+        const zoom = m.cameraForBounds(bounds, { padding: 60 })?.zoom;
+        if (zoom !== undefined) m.setMinZoom(Math.max(12.5, zoom - AFASTAMENTO_FOLGA));
+      };
+      m.on("resize", travarAfastamento);
       m.on("load", () => {
+        travarAfastamento();
         // Área ao redor do foco: escura, mas ainda visível.
         m.addSource("mask", { type: "geojson", data: mascara(areaFocoAnel) });
         m.addLayer({ id: "mask", type: "fill", source: "mask", paint: { "fill-color": "#050a14", "fill-opacity": OPACIDADE_ESCURA } }, "road-labels");
