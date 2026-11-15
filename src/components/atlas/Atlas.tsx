@@ -15,10 +15,10 @@ const ORIENTACAO_BASE = -12;
 const GIRO_MAXIMO = 35;
 // Inclinação máxima (graus). Valores menores pesam menos.
 const INCLINACAO_MAXIMA = 50;
-// A inclinação permitida cresce com o zoom: afastado quase não inclina (a vista alcançaria
-// longe demais e mostraria a área coberta); aproximado inclina até o máximo.
-const INCLINACAO_AFASTADO = 15;
-const ZOOM_SEM_INCLINAR = 15.8; // até aqui só a inclinação mínima
+// A inclinação permitida cresce com o zoom: afastado inclina um pouco menos (a vista alcança
+// mais longe), aproximado inclina até o máximo. O centro do mapa já fica preso à área de foco.
+const INCLINACAO_AFASTADO = 35;
+const ZOOM_SEM_INCLINAR = 15.0; // até aqui vale só a inclinação do afastado
 const ZOOM_INCLINACAO_TOTAL = 17.2; // a partir daqui, a inclinação máxima
 // Zoom máximo: impede aproximar até ver uma única casa.
 const ZOOM_MAXIMO = 17.5;
@@ -97,7 +97,6 @@ export function Atlas() {
         const t = Math.min(1, Math.max(0, (m.getZoom() - ZOOM_SEM_INCLINAR) / (ZOOM_INCLINACAO_TOTAL - ZOOM_SEM_INCLINAR)));
         const maximo = INCLINACAO_AFASTADO + t * (INCLINACAO_MAXIMA - INCLINACAO_AFASTADO);
         m.setMaxPitch(maximo);
-        if (m.getPitch() > maximo) m.setPitch(maximo);
       };
       m.on("zoom", limitarInclinacao);
       m.on("load", () => {
