@@ -15,6 +15,11 @@ const ORIENTACAO_BASE = -12;
 const GIRO_MAXIMO = 35;
 // Inclinação máxima (graus). Valores menores pesam menos.
 const INCLINACAO_MAXIMA = 55;
+// A inclinação permitida cresce com o zoom: afastado quase não inclina (a vista alcançaria
+// longe demais e mostraria a área coberta); aproximado inclina até o máximo.
+const INCLINACAO_AFASTADO = 15;
+const ZOOM_SEM_INCLINAR = 15.8; // até aqui só a inclinação mínima
+const ZOOM_INCLINACAO_TOTAL = 17.2; // a partir daqui, a inclinação máxima
 // Zoom máximo: impede aproximar até ver uma única casa.
 const ZOOM_MAXIMO = 17.5;
 // Folga (em níveis de zoom) abaixo da vista que mostra o limite inteiro. 0 = exatamente essa vista.
@@ -83,8 +88,16 @@ export function Atlas() {
         if (zoom !== undefined) m.setMinZoom(Math.max(12.5, zoom - AFASTAMENTO_FOLGA));
       };
       m.on("resize", travarAfastamento);
+      const limitarInclinacao = () => {
+        const t = Math.min(1, Math.max(0, (m.getZoom() - ZOOM_SEM_INCLINAR) / (ZOOM_INCLINACAO_TOTAL - ZOOM_SEM_INCLINAR)));
+        const maximo = INCLINACAO_AFASTADO + t * (INCLINACAO_MAXIMA - INCLINACAO_AFASTADO);
+        m.setMaxPitch(maximo);
+        if (m.getPitch() > maximo) m.setPitch(maximo);
+      };
+      m.on("zoom", limitarInclinacao);
       m.on("load", () => {
         travarAfastamento();
+        limitarInclinacao();
         // Área ao redor do foco: escura, mas ainda visível.
         m.addSource("mask", { type: "geojson", data: mascara(areaFocoAnel) });
         m.addLayer({ id: "mask", type: "fill", source: "mask", paint: { "fill-color": "#050a14", "fill-opacity": OPACIDADE_ESCURA } }, "road-labels");
