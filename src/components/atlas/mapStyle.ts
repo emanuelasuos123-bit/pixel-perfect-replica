@@ -15,10 +15,12 @@ const COR = {
   praca: "#e3d3b5",
   quadra: "#7fa65c",
   espigao: "#cdb88f",
-  ruaMenor: "#a9a49a",
-  ruaMaior: "#8a8a90",
-  ruaPedestre: "#c9bfa8",
+  ruaMenor: "#6c6c72",
+  ruaMaior: "#505057",
+  ruaPedestre: "#9a958a",
   casas: ["#c4573a", "#b5472e", "#d06a47", "#d98a5f"], // tons de telhado
+  grandes: "#d9dbdd", // estruturas grandes (prédios, galpões, ginásios): cinza-claro
+  arvore: "#5f8f3f",
 };
 
 const filtro = (k: string): ["==", ["get", string], string] => ["==", ["get", "k"], k];
@@ -76,16 +78,16 @@ export const mapStyle: StyleSpecification = {
     {
       id: "casas", type: "fill-extrusion", source: "pirambu", filter: filtro("pred"), minzoom: 13.5,
       paint: {
-        "fill-extrusion-color": ["match", ["get", "t"], 0, COR.casas[0], 1, COR.casas[1], 2, COR.casas[2], COR.casas[3]],
+        "fill-extrusion-color": ["match", ["get", "t"], 0, COR.casas[0], 1, COR.casas[1], 2, COR.casas[2], 4, COR.grandes, 5, COR.arvore, COR.casas[3]],
         "fill-extrusion-height": ["coalesce", ["get", "h"], 5],
-        "fill-extrusion-base": 0,
+        "fill-extrusion-base": ["coalesce", ["get", "b"], 0],
         "fill-extrusion-opacity": 0.95,
       },
     },
     {
       id: "road-labels", type: "symbol", source: "pirambu", filter: ["all", filtro("via"), ["has", "n"]], minzoom: 15.5,
       layout: { "symbol-placement": "line", "text-field": ["get", "n"], "text-font": ["Noto Sans Regular"], "text-size": 11 },
-      paint: { "text-color": "#3d342c", "text-halo-color": "#f3e9d6", "text-halo-width": 1.5 },
+      paint: { "text-color": "#f4f0e8", "text-halo-color": "#2a2a2f", "text-halo-width": 1.6 },
     },
   ],
 };

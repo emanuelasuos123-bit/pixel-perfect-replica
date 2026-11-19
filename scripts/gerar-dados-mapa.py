@@ -139,6 +139,7 @@ def altura(p):
 MAJ={"primary","secondary","tertiary","trunk","primary_link","secondary_link","tertiary_link","trunk_link"}
 MIN={"residential","service","living_street","unclassified"}
 cont={}
+predios=[]
 def add(k,geom,props=None):
     pr={"k":k}; pr.update(props or {}); out.append({"type":"Feature","properties":pr,"geometry":geom}); cont[k]=cont.get(k,0)+1
 for f in fs:
@@ -150,7 +151,7 @@ for f in fs:
             if p["building"] in ("roof","carport","pavilion"): hh=3.0
             else: hh=altura(p)
             t=int(hashlib.md5(p["@id"].encode()).hexdigest(),16)%4
-            add("pred",{"type":"Polygon","coordinates":[[r5(q) for q in ring]]},{"h":round(hh,1),"t":t})
+            predios.append({"ring":ring[:-1] if ring[0]==ring[-1] else ring,"h":hh,"t":t})
         elif p.get("leisure") in ("pitch","sports_centre"): add("quadra",{"type":"Polygon","coordinates":[[r5(q) for q in ring]]})
         elif p.get("leisure") in ("park","playground"): add("verde",{"type":"Polygon","coordinates":[[r5(q) for q in ring]]})
         elif p.get("natural")=="sand": add("areia",{"type":"Polygon","coordinates":[[r5(q) for q in ring]]})
@@ -165,6 +166,98 @@ for f in fs:
                 pr={"c":cl}
                 if p.get("name"): pr["n"]=p["name"]
                 add("via",{"type":"LineString","coordinates":[r5(q) for q in tr]},pr)
+
+# ---------------------------------------------------------------------------------------
+# Prédios: limpeza (sobreposição = "tremido"), prédios grandes acinzentados e modelos à mão
+# ---------------------------------------------------------------------------------------
+KX=111320*math.cos(math.radians(3.712)); KY=110574          # metros por grau
+def m2(poly): return abs(area(poly))*KX*KY
+def diametro(poly):
+    return max(math.hypot((a[0]-b[0])*KX,(a[1]-b[1])*KY) for a in poly for b in poly)
+def casco(pts):
+    pts=sorted(set(pts))
+    cr=lambda o,a,b:(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0])
+    lo=[]
+    for q in pts:
+        while len(lo)>=2 and cr(lo[-2],lo[-1],q)<=0: lo.pop()
+        lo.append(q)
+    up=[]
+    for q in reversed(pts):
+        while len(up)>=2 and cr(up[-2],up[-1],q)<=0: up.pop()
+        up.append(q)
+    return lo[:-1]+up[:-1]
+def area(p): return sum(p[i][0]*p[(i+1)%len(p)][1]-p[(i+1)%len(p)][0]*p[i][1] for i in range(len(p)))/2
+
+# (a) tira lascas minúsculas
+for b in predios: b["a"]=m2(b["ring"])
+predios=[b for b in predios if b["a"]>=8]
+# (b) sobreposição: se um prédio está mais de 45% dentro de outro maior, some o menor
+CEL=0.0004; grade={}
+for i,b in enumerate(predios):
+    xs=[q[0] for q in b["ring"]]; ys=[q[1] for q in b["ring"]]
+    b["bb"]=(min(xs),min(ys),max(xs),max(ys)); b["casco"]=casco([tuple(q) for q in b["ring"]]); b["rm"]=False
+    for cx in range(int(b["bb"][0]/CEL),int(b["bb"][2]/CEL)+1):
+        for cy in range(int(b["bb"][1]/CEL),int(b["bb"][3]/CEL)+1): grade.setdefault((cx,cy),[]).append(i)
+vistos=set(); removidos=0
+for ids in grade.values():
+    for ia in ids:
+        for ib in ids:
+            if ia>=ib or (ia,ib) in vistos: continue
+            vistos.add((ia,ib)); A,B=predios[ia],predios[ib]
+            if A["rm"] or B["rm"]: continue
+            a,b_=A["bb"],B["bb"]
+            if a[2]<b_[0] or b_[2]<a[0] or a[3]<b_[1] or b_[3]<a[1]: continue
+            menor,maior=(A,B) if A["a"]<=B["a"] else (B,A)
+            if len(maior["casco"])<3: continue
+            inter=clip_poly([tuple(q) for q in menor["ring"]],maior["casco"] if area(maior["casco"])>0 else maior["casco"][::-1])
+            if len(inter)>=3 and m2(inter)/menor["a"]>0.45: menor["rm"]=True; removidos+=1
+predios=[b for b in predios if not b["rm"]]
+print("prédios sobrepostos removidos:",removidos)
+# (c) encolhe cada prédio ~25 cm para abrir uma fresta entre vizinhos; tons; prédios grandes
+grandes=0
+for k,b in enumerate(predios):
+    c=centroid(b["ring"]+[b["ring"][0]]); f=max(0.88,1-0.5/math.sqrt(b["a"]))
+    ring=[(c[0]+(q[0]-c[0])*f,c[1]+(q[1]-c[1])*f) for q in b["ring"]]
+    t=b["t"]
+    if b["a"]>700 or diametro(b["ring"])>42: t=4; grandes+=1        # estrutura grande: cinza-claro
+    h=round(b["h"]+(k%9)*0.03,2)                                    # topos nunca no mesmo plano (evita tremor)
+    add("pred",{"type":"Polygon","coordinates":[[r5(q) for q in ring]+[r5(ring[0])]]},{"h":h,"t":t})
+print("prédios grandes (cinza):",grandes)
+
+# (d) Moema Távora: não existe no OpenStreetMap; modelado sobre a foto de satélite.
+#     Pontos em pixels da foto (953x645, norte para cima). 1 px = 0,075 m.
+#     Escala e posição escolhidas por busca: máxima folga das ruas e nenhuma invasão dos vizinhos
+#     (o pixel (520,62), na Rua Marcílio Dias, ficou 4 m a leste e 5 m a sul do ponto de referência).
+M_ESC=0.075; M_LNG=-38.5500944+4/KX; M_LAT=-3.712199+0.0002207-5/KY
+def px(p): return (M_LNG+(p[0]-520)*M_ESC/KX, M_LAT-(p[1]-62)*M_ESC/KY)
+def circ(c,r,n=14): return [(c[0]+r*math.cos(2*math.pi*i/n),c[1]+r*math.sin(2*math.pi*i/n)) for i in range(n)]
+MODELOS=[
+  # (pontos em px, altura, base, tom)   tom: 2 telhado, 4 cinza-claro (ginásio/tanque), 5 árvore
+  ([(132,26),(500,160),(418,376),(45,258)],9.0,0,4),                                  # ginásio (telhado metálico)
+  ([(508,152),(565,128),(918,238),(902,360),(792,625),(735,608),(212,432),(246,346),
+    (445,382),(768,462),(772,336),(540,262)],7.0,0,2),                                # prédio em U (telhado cerâmico)
+  (circ((525,218),22),11.0,0,4),                                                       # caixa-d'água
+  (circ((590,335),68),8.0,2.5,5),                                                      # árvore do pátio
+  (circ((125,455),85),8.0,2.5,5),                                                      # árvore grande
+  (circ((600,600),50),7.0,2.5,5),
+  (circ((340,572),38),6.0,2.5,5),
+]
+ESC=[px(q) for pts,_,_,_ in MODELOS[:2] for q in pts]
+zona=casco(ESC)
+ant=len(out)
+# tira qualquer prédio do OSM que invada a área da escola
+def dentro_poly(pt,poly):
+    x,y=pt;c=False
+    for i in range(len(poly)):
+        a,b=poly[i],poly[i-1]
+        if (a[1]>y)!=(b[1]>y) and x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]: c=not c
+    return c
+n0=len(out)
+out[:]=[f for f in out if not (f["properties"]["k"]=="pred" and dentro_poly(centroid(f["geometry"]["coordinates"][0]),zona))]
+print("prédios do OSM removidos da área da escola:",n0-len(out))
+for pts,h,base,tom in MODELOS:
+    ring=[px(q) for q in pts]
+    add("pred",{"type":"Polygon","coordinates":[[r5(q) for q in ring]+[r5(ring[0])]]},{"h":h,"b":base,"t":tom})
 print(cont)
 fc={"type":"FeatureCollection","features":out}
 SAIDA = os.path.join(RAIZ, "public/dados/pirambu.geojson")

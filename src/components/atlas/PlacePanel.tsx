@@ -160,7 +160,7 @@ export function PlacePanel({ place, onClose }: { place: Place; onClose: () => vo
         {hero ? (
           <>
             <img src={hero.url} alt={hero.caption || place.name} decoding="async" className="block aspect-[16/10] w-full object-cover md:aspect-[4/3]" />
-            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-3/5 bg-gradient-to-b from-[#0a1830] via-[#0a1830]/70 to-transparent" />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[42%] bg-gradient-to-b from-[#0a1830] via-[#0a1830]/55 to-transparent" />
           </>
         ) : (
           <div className="h-24" />
