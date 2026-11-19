@@ -7,7 +7,7 @@ import type { Feature, Polygon } from "geojson";
 //     Castelo Branco desenhado pelo Emanuel (linha ciano), a costa e o território do Pirambu,
 //     incluindo o Polo.
 //  2. ÁREA ESCURECIDA: logo ao redor do foco, ainda dá para ver, só mais escura.
-//  3. ÁREA OCULTA (areaOcultaAnel): mais longe, fica totalmente coberta (o usuário não vê).
+//  3. ÁREA DOS DADOS (areaOcultaAnel): o limite do mapa. Além dele não há nada para ver.
 //
 // Para ajustar o contorno depois, edite os pontos abaixo (dá para desenhar em geojson.io e
 // copiar as coordenadas). Mantenha o primeiro ponto repetido no fim de cada lista.
@@ -33,27 +33,22 @@ const foco: [number, number][] = [
   [-38.5598, -3.71],
 ];
 
-// Contorno externo da área escurecida: o foco "engordado" cerca de 500 m.
-// Entre o foco e este contorno o mapa aparece escurecido; depois dele, fica coberto.
+// Contorno externo dos dados do mapa: o foco "engordado" cerca de 500 m, em forma convexa.
+// Os dados em public/dados/pirambu.geojson são recortados por este contorno (veja scripts/).
+// Entre o foco e este contorno o mapa aparece escurecido; fora dele não existe mapa.
 const oculta: [number, number][] = [
+  [-38.564354, -3.709467],
   [-38.563866, -3.715952],
   [-38.55764, -3.718406],
   [-38.55495, -3.718907],
-  [-38.552504, -3.719052],
-  [-38.550763, -3.718996],
-  [-38.549066, -3.719249],
-  [-38.547013, -3.719449],
   [-38.544651, -3.719711],
   [-38.540891, -3.719422],
   [-38.534436, -3.714542],
-  [-38.541217, -3.709095],
-  [-38.541896, -3.708642],
   [-38.54208, -3.706442],
   [-38.547351, -3.702342],
   [-38.552385, -3.69889],
   [-38.558656, -3.699726],
   [-38.562574, -3.70383],
-  [-38.564354, -3.709467],
 ];
 
 const fechar = (anel: [number, number][]): [number, number][] => [...anel, anel[0] as [number, number]];

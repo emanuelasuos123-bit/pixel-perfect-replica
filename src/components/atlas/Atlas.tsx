@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Map as MLMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { places, type Place } from "@/data/atlas";
-import { areaFoco, areaFocoAnel, areaOcultaAnel, caixaFoco as bounds, caixaLimite, limitarAoAnel } from "@/data/limites";
+import { areaFoco, areaFocoAnel, caixaFoco as bounds, caixaLimite, limitarAoAnel } from "@/data/limites";
 import { mapStyle } from "./mapStyle";
 import { PlacePanel } from "./PlacePanel";
 import { Welcome, hasSeenWelcome, markWelcomeSeen } from "./Welcome";
@@ -105,9 +105,6 @@ export function Atlas() {
         // Área ao redor do foco: escura, mas ainda visível.
         m.addSource("mask", { type: "geojson", data: mascara(areaFocoAnel) });
         m.addLayer({ id: "mask", type: "fill", source: "mask", paint: { "fill-color": "#050a14", "fill-opacity": OPACIDADE_ESCURA } }, "road-labels");
-        // Mais longe: coberta por completo (o usuário não vê).
-        m.addSource("mask-oculta", { type: "geojson", data: mascara(areaOcultaAnel) });
-        m.addLayer({ id: "mask-oculta", type: "fill", source: "mask-oculta", paint: { "fill-color": "#0b1424", "fill-opacity": 1 } });
         // Contorno luminoso do limite.
         m.addSource("territory", { type: "geojson", data: areaFoco });
         m.addLayer({ id: "territory-glow", type: "line", source: "territory", paint: { "line-color": "#6cc4ff", "line-width": 8, "line-blur": 8, "line-opacity": 0.35 } });
@@ -172,6 +169,9 @@ export function Atlas() {
   return (
     <div className="fixed inset-0 overflow-hidden bg-background">
       <div className="absolute inset-0"><div ref={el} className="h-full w-full" /></div>
+
+      {/* Degradê no topo: mantém o título legível sobre o mapa claro */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-[5] h-44 bg-gradient-to-b from-[#0a1830]/85 via-[#0a1830]/40 to-transparent" />
 
       {/* Cabeçalho e orientação */}
       <div className="pointer-events-none absolute left-4 top-4 z-10 flex max-w-[calc(100%-2rem)] flex-col gap-3 md:left-6 md:top-6">

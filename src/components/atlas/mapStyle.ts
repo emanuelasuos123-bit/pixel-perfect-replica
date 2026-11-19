@@ -1,41 +1,91 @@
 import type { StyleSpecification } from "maplibre-gl";
 
-// Dark blue cartography on OpenFreeMap (OpenStreetMap data). Map paint colors
-// live here because the map canvas cannot read CSS variables.
+// Mapa ilustrado do Pirambu, desenhado só com os dados recortados da área
+// (public/dados/pirambu.geojson, do OpenStreetMap). Não há mapa fora do limite.
+// As cores vivem aqui porque o canvas do mapa não lê variáveis de CSS.
+//
+// Cores principais (mude à vontade):
+const COR = {
+  fundo: "#0b1424", // além do limite
+  mar: "#1a8fa5",
+  marRaso: "#62d2c4", // faixa clara perto da costa
+  terra: "#d6c4a5", // chão entre as casas
+  areia: "#efdfae",
+  verde: "#9bb872",
+  praca: "#e3d3b5",
+  quadra: "#7fa65c",
+  espigao: "#cdb88f",
+  ruaMenor: "#a9a49a",
+  ruaMaior: "#8a8a90",
+  ruaPedestre: "#c9bfa8",
+  casas: ["#c4573a", "#b5472e", "#d06a47", "#d98a5f"], // tons de telhado
+};
+
+const filtro = (k: string): ["==", ["get", string], string] => ["==", ["get", "k"], k];
+
 export const mapStyle: StyleSpecification = {
   version: 8,
   glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   sources: {
-    omt: { type: "vector", url: "https://tiles.openfreemap.org/planet" },
+    pirambu: {
+      type: "geojson",
+      data: "/dados/pirambu.geojson",
+      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>',
+    },
   },
   layers: [
-    { id: "bg", type: "background", paint: { "background-color": "#0b1424" } },
-    { id: "water", type: "fill", source: "omt", "source-layer": "water", paint: { "fill-color": "#071a33" } },
-    { id: "landuse", type: "fill", source: "omt", "source-layer": "landuse", paint: { "fill-color": "#0f1c30", "fill-opacity": 0.6 } },
-    { id: "park", type: "fill", source: "omt", "source-layer": "park", paint: { "fill-color": "#0f2a33", "fill-opacity": 0.7 } },
+    { id: "bg", type: "background", paint: { "background-color": COR.fundo } },
+    { id: "mar", type: "fill", source: "pirambu", filter: filtro("mar"), paint: { "fill-color": COR.mar } },
     {
-      id: "roads-minor", type: "line", source: "omt", "source-layer": "transportation",
-      filter: ["in", ["get", "class"], ["literal", ["minor", "service", "path", "track"]]],
-      paint: { "line-color": "#22344f", "line-width": ["interpolate", ["linear"], ["zoom"], 14, 0.6, 18, 4] },
-    },
-    {
-      id: "roads-major", type: "line", source: "omt", "source-layer": "transportation",
-      filter: ["in", ["get", "class"], ["literal", ["primary", "secondary", "tertiary", "trunk", "motorway"]]],
-      paint: { "line-color": "#2f4a70", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 1, 18, 8] },
-    },
-    {
-      id: "buildings", type: "fill-extrusion", source: "omt", "source-layer": "building", minzoom: 14,
+      id: "mar-raso", type: "line", source: "pirambu", filter: filtro("costa"),
+      layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "fill-extrusion-color": ["interpolate", ["linear"], ["coalesce", ["get", "render_height"], 4], 0, "#1a3358", 20, "#3a6aa8"],
-        "fill-extrusion-height": ["coalesce", ["get", "render_height"], 4],
-        "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
-        "fill-extrusion-opacity": 0.85,
+        "line-color": COR.marRaso, "line-opacity": 0.75,
+        "line-width": ["interpolate", ["linear"], ["zoom"], 13, 24, 16, 70, 18, 170],
+        "line-blur": ["interpolate", ["linear"], ["zoom"], 13, 10, 16, 34, 18, 80],
+      },
+    },
+    { id: "terra", type: "fill", source: "pirambu", filter: filtro("terra"), paint: { "fill-color": COR.terra } },
+    { id: "areia", type: "fill", source: "pirambu", filter: filtro("areia"), paint: { "fill-color": COR.areia } },
+    { id: "praca", type: "fill", source: "pirambu", filter: filtro("praca"), paint: { "fill-color": COR.praca } },
+    { id: "verde", type: "fill", source: "pirambu", filter: filtro("verde"), paint: { "fill-color": COR.verde } },
+    { id: "quadra", type: "fill", source: "pirambu", filter: filtro("quadra"), paint: { "fill-color": COR.quadra } },
+    {
+      id: "espigao", type: "line", source: "pirambu", filter: filtro("espigao"),
+      layout: { "line-cap": "round" },
+      paint: { "line-color": COR.espigao, "line-width": ["interpolate", ["linear"], ["zoom"], 13, 1.5, 18, 9] },
+    },
+    {
+      id: "espuma", type: "line", source: "pirambu", filter: filtro("costa"),
+      paint: { "line-color": "#f6f1e0", "line-opacity": 0.85, "line-width": ["interpolate", ["linear"], ["zoom"], 13, 0.8, 18, 3] },
+    },
+    {
+      id: "ruas-pedestre", type: "line", source: "pirambu", filter: ["all", filtro("via"), ["==", ["get", "c"], 3]],
+      paint: { "line-color": COR.ruaPedestre, "line-width": ["interpolate", ["linear"], ["zoom"], 14, 0.5, 18, 3] },
+    },
+    {
+      id: "ruas-menores", type: "line", source: "pirambu", filter: ["all", filtro("via"), ["==", ["get", "c"], 2]],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": COR.ruaMenor, "line-width": ["interpolate", ["linear"], ["zoom"], 14, 0.6, 18, 5] },
+    },
+    {
+      id: "ruas-maiores", type: "line", source: "pirambu", filter: ["all", filtro("via"), ["==", ["get", "c"], 1]],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": COR.ruaMaior, "line-width": ["interpolate", ["linear"], ["zoom"], 13, 1, 18, 10] },
+    },
+    {
+      id: "casas", type: "fill-extrusion", source: "pirambu", filter: filtro("pred"), minzoom: 13.5,
+      paint: {
+        "fill-extrusion-color": ["match", ["get", "t"], 0, COR.casas[0], 1, COR.casas[1], 2, COR.casas[2], COR.casas[3]],
+        "fill-extrusion-height": ["coalesce", ["get", "h"], 5],
+        "fill-extrusion-base": 0,
+        "fill-extrusion-opacity": 0.95,
       },
     },
     {
-      id: "road-labels", type: "symbol", source: "omt", "source-layer": "transportation_name", minzoom: 15.5,
-      layout: { "symbol-placement": "line", "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 11 },
-      paint: { "text-color": "#7f97b8", "text-halo-color": "#0b1424", "text-halo-width": 1.2 },
+      id: "road-labels", type: "symbol", source: "pirambu", filter: ["all", filtro("via"), ["has", "n"]], minzoom: 15.5,
+      layout: { "symbol-placement": "line", "text-field": ["get", "n"], "text-font": ["Noto Sans Regular"], "text-size": 11 },
+      paint: { "text-color": "#3d342c", "text-halo-color": "#f3e9d6", "text-halo-width": 1.5 },
     },
   ],
 };
