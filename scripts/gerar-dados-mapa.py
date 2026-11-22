@@ -262,6 +262,87 @@ print("prédios do OSM removidos da área da escola:",n0-len(out))
 for pts,h,base,tom in MODELOS:
     ring=[px(q) for q in pts]
     add("pred",{"type":"Polygon","coordinates":[[r5(q) for q in ring]+[r5(ring[0])]]},{"h":h,"b":base,"t":tom})
+
+# ---------------------------------------------------------------------------------------
+# (e) Maquete do Polo do Pirambu (Areninha, quadras, arquibancadas, muretas, árvores)
+#     Desenhada sobre a foto de satélite do Google Maps (1145x585 px, norte para cima).
+#     A foto é ajustada ao mapa por mínimos quadrados: os 4 cantos do campo (foto) contra os
+#     4 cantos do campo no OpenStreetMap (metros a partir do ponto do Polo). Escala resultante ~0,22 m/px.
+# ---------------------------------------------------------------------------------------
+POLO=(-38.5444985,-3.714376)
+CAMPO_PX=[(385,108),(822,196),(768,487),(326,391)]            # NO, NE, SE, SO (foto)
+CAMPO_M=[(-93.5,62.6),(2.1,41.6),(-10.2,-20.3),(-105.7,0.7)]  # mesmos cantos no OSM (m)
+zp=[complex(x,-y) for x,y in CAMPO_PX]; zm=[complex(x,y) for x,y in CAMPO_M]
+pm=sum(zp)/4; mm_=sum(zm)/4
+A=sum((a-pm).conjugate()*(b-mm_) for a,b in zip(zp,zm))/sum(abs(a-pm)**2 for a in zp)
+def pg(q):  # pixel da foto -> [lng, lat]
+    z=A*(complex(q[0],-q[1])-pm)+mm_
+    return (POLO[0]+z.real/KX, POLO[1]+z.imag/KY)
+print("maquete: escala %.3f m/px, giro %.1f graus"%(abs(A),math.degrees(math.atan2(A.imag,A.real))))
+r6=lambda p:[round(p[0],6),round(p[1],6)]
+def poly_g(pts): 
+    r=[pg(q) for q in pts]; return {"type":"Polygon","coordinates":[[r6(q) for q in r]+[r6(r[0])]]}
+def chao(pts,cor): add("chao",poly_g(pts),{"cor":cor})
+def linha(pts): add("marca",{"type":"LineString","coordinates":[r6(pg(q)) for q in pts]})
+def bloco(pts,h,cor,b=0): add("pred",poly_g(pts),{"h":h,"b":b,"t":3,"cor":cor})
+def lerp(a,b,t): return (a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t)
+NO,NE,SE,SO=CAMPO_PX
+def Pc(u,v):  # u: oeste->leste (0..1), v: norte->sul (0..1) dentro do campo
+    return lerp(lerp(NO,NE,u),lerp(SO,SE,u),v)
+def mureta(pts,larg=4.5,h=0.9,cor="#d9733f",pular=()):
+    n=len(pts)
+    for i in range(n):
+        if i in pular: continue
+        a,b=pts[i],pts[(i+1)%n]; dx,dy=b[0]-a[0],b[1]-a[1]; d=math.hypot(dx,dy) or 1
+        nx,ny=-dy/d*larg/2,dx/d*larg/2
+        bloco([(a[0]+nx,a[1]+ny),(b[0]+nx,b[1]+ny),(b[0]-nx,b[1]-ny),(a[0]-nx,a[1]-ny)],h,cor)
+def cx(c,r,n=24): return [(c[0]+r*math.cos(2*math.pi*i/n),c[1]+r*math.sin(2*math.pi*i/n)) for i in range(n+1)]
+
+todos=[]
+# quadras ao lado do campo (cimento/piso claro) com muretas laranja
+Q1=[(158,236),(232,128),(298,162),(282,262),(212,288)]
+Q2=[(262,12),(402,48),(352,160),(242,118)]
+chao(Q2,"#b9bec3"); chao(Q1,"#8fb4c0"); todos+=Q1+Q2
+linha(cx((248,157),17)); linha(cx((222,207),8))
+mureta(Q1); mureta(Q2)
+# campo de grama sintética
+chao([NO,NE,SE,SO],"#2f6b3d")
+margem=[Pc(-0.012,-0.02),Pc(1.012,-0.02),Pc(1.012,1.02),Pc(-0.012,1.02)]
+mureta(margem,pular=(2,))                                      # lado sul fica com as arquibancadas
+todos+=[NO,NE,SE,SO]
+# marcações do campo (linhas brancas)
+linha([NO,NE,SE,SO,NO]); linha([Pc(.5,0),Pc(.5,1)]); linha(cx(Pc(.5,.5),41))
+for u0,u1 in ((0,.165),(1,.835)):
+    linha([Pc(u0,.2),Pc(u1,.2),Pc(u1,.8),Pc(u0,.8)])
+for u0,u1 in ((0,.055),(1,.945)):
+    linha([Pc(u0,.37),Pc(u1,.37),Pc(u1,.63),Pc(u0,.63)])
+# arquibancadas (3 degraus) ao longo da lateral sul
+dx,dy=((SO[0]-NO[0])+(SE[0]-NE[0]))/2,((SO[1]-NO[1])+(SE[1]-NE[1]))/2; dn=math.hypot(dx,dy); nx,ny=dx/dn,dy/dn
+for u0,u1 in ((.02,.45),(.51,.96)):
+    for k,(d0,d1) in enumerate(((18,26),(26,34),(34,42))):
+        a,b=Pc(u0,1),Pc(u1,1)
+        bloco([(a[0]+nx*d0,a[1]+ny*d0),(b[0]+nx*d0,b[1]+ny*d0),(b[0]+nx*d1,b[1]+ny*d1),(a[0]+nx*d1,a[1]+ny*d1)],0.6*(k+1),"#aab4bb")
+        todos+=[(a[0]+nx*42,a[1]+ny*42),(b[0]+nx*42,b[1]+ny*42)]
+# construções pequenas e areia
+chao([(680,110),(780,125),(775,175),(680,165)],"#e6d3a0")
+bloco([(455,45),(528,60),(520,115),(455,100)],4.0,"#e6e2d8")
+bloco([(578,130),(635,138),(632,155),(578,148)],3.0,"#b9644d")
+todos+=[(455,45),(528,60),(680,110),(780,125),(775,175)]
+# postes de iluminação (altos, finos)
+for u,v in ((.04,-.05),(.5,-.05),(.96,-.05),(.04,1.05),(.96,1.05)):
+    c=Pc(u,v); bloco(cx(c,3,4),16.0,"#8d9399")
+# árvores e palmeiras (copas elevadas, como nas fotos)
+for c,r in (((190,432),22),((222,462),24),((255,440),20),((238,500),20),((205,478),18),((292,447),20),((318,478),17)):
+    add("pred",poly_g(cx(c,r,14)),{"h":8.0,"b":2.5,"t":5})
+for c in ((352,186),(356,236),(300,286),(294,338),(282,372),(358,16),(386,32),(1095,335)):
+    add("pred",poly_g(cx(c,8,10)),{"h":8.0,"b":3.0,"t":5})
+todos+=[(190,432),(255,500),(185,430)]
+ZMQ=casco([pg(q) for q in todos])
+def centro_ring(f): return centroid(f["geometry"]["coordinates"][0])
+n0=len(out)
+out[:]=[f for f in out if not (f["properties"]["k"] in ("pred","quadra") and "cor" not in f["properties"] and "b" not in f["properties"]
+        and dentro_poly(centro_ring(f),ZMQ))]
+print("OSM (prédios/quadras) trocados pela maquete do Polo:",n0-len(out))
 print(cont)
 fc={"type":"FeatureCollection","features":out}
 SAIDA = os.path.join(RAIZ, "public/dados/pirambu.geojson")

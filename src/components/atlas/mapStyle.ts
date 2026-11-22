@@ -52,6 +52,12 @@ export const mapStyle: StyleSpecification = {
     { id: "praca", type: "fill", source: "pirambu", filter: filtro("praca"), paint: { "fill-color": COR.praca } },
     { id: "verde", type: "fill", source: "pirambu", filter: filtro("verde"), paint: { "fill-color": COR.verde } },
     { id: "quadra", type: "fill", source: "pirambu", filter: filtro("quadra"), paint: { "fill-color": COR.quadra } },
+    // Maquete do Polo: pisos coloridos e linhas de marcação (campo, quadras, areia).
+    { id: "chao", type: "fill", source: "pirambu", filter: filtro("chao"), paint: { "fill-color": ["get", "cor"] } },
+    {
+      id: "marca", type: "line", source: "pirambu", filter: filtro("marca"), minzoom: 15,
+      paint: { "line-color": "#f4f7f0", "line-opacity": 0.9, "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.4, 18, 2] },
+    },
     {
       id: "espigao", type: "line", source: "pirambu", filter: filtro("espigao"),
       layout: { "line-cap": "round" },
@@ -78,7 +84,7 @@ export const mapStyle: StyleSpecification = {
     {
       id: "casas", type: "fill-extrusion", source: "pirambu", filter: filtro("pred"), minzoom: 13.5,
       paint: {
-        "fill-extrusion-color": ["match", ["get", "t"], 0, COR.casas[0], 1, COR.casas[1], 2, COR.casas[2], 4, COR.grandes, 5, COR.arvore, COR.casas[3]],
+        "fill-extrusion-color": ["case", ["has", "cor"], ["get", "cor"], ["match", ["get", "t"], 0, COR.casas[0], 1, COR.casas[1], 2, COR.casas[2], 4, COR.grandes, 5, COR.arvore, COR.casas[3]]],
         "fill-extrusion-height": ["coalesce", ["get", "h"], 5],
         "fill-extrusion-base": ["coalesce", ["get", "b"], 0],
         "fill-extrusion-opacity": 0.95,
