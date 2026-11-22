@@ -259,7 +259,16 @@ def dentro_poly(pt,poly):
 n0=len(out)
 out[:]=[f for f in out if not (f["properties"]["k"]=="pred" and dentro_poly(centroid(f["geometry"]["coordinates"][0]),zona))]
 print("prédios do OSM removidos da área da escola:",n0-len(out))
+def circ_m(c,r,n=14): return [(c[0]+r*math.cos(2*math.pi*i/n)/KX,c[1]+r*math.sin(2*math.pi*i/n)/KY) for i in range(n)]
+def poligono(ring,h,b,cor): add("pred",{"type":"Polygon","coordinates":[[r6(q) for q in ring]+[r6(ring[0])]]},{"h":h,"b":b,"t":3,"cor":cor})
+r6=lambda p:[round(p[0],6),round(p[1],6)]
 for pts,h,base,tom in MODELOS:
+    if tom==5:   # árvore: tronco + copa arredondada em 3 camadas
+        ring=[px(q) for q in pts]; c=centroid(ring+[ring[0]]); r=max(math.hypot((q[0]-c[0])*KX,(q[1]-c[1])*KY) for q in ring)*0.55
+        poligono(circ_m(c,0.35,6),3.0,0,"#6b4a2f")
+        for k,(f,b,hh,cor) in enumerate(((1.0,2.5,4.8,"#4f7f38"),(0.8,4.8,6.6,"#5f8f3f"),(0.5,6.6,7.8,"#78a64c"))):
+            poligono(circ_m((c[0]+k*0.15/KX,c[1]-k*0.15/KY),r*f,14),hh,b,cor)
+        continue
     ring=[px(q) for q in pts]
     add("pred",{"type":"Polygon","coordinates":[[r5(q) for q in ring]+[r5(ring[0])]]},{"h":h,"b":base,"t":tom})
 
@@ -302,8 +311,25 @@ todos=[]
 # quadras ao lado do campo (cimento/piso claro) com muretas laranja
 Q1=[(160,240),(230,127),(298,163),(228,276)]
 Q2=[(262,12),(402,48),(372,158),(240,122)]
-chao(Q2,"#b9bec3"); chao(Q1,"#8fb4c0"); todos+=Q1+Q2
-linha(cx((248,157),17)); linha(cx((222,207),8))
+chao(Q2,"#b9bec3"); chao(Q1,"#a3bcc6"); todos+=Q1+Q2
+# quadra 1 (piso claro): meio de quadra com círculo azul, duas meias-luas verdes e linhas brancas
+_A,_B,_D=Q1[0],Q1[1],Q1[3]
+_ab=(_B[0]-_A[0],_B[1]-_A[1]); _ad=(_D[0]-_A[0],_D[1]-_A[1]); _L=math.hypot(*_ab); _W=math.hypot(*_ad)
+def Qp(u,v): return (_A[0]+_ab[0]*u+_ad[0]*v,_A[1]+_ab[1]*u+_ad[1]*v)
+_ex=(_ab[0]/_L,_ab[1]/_L); _ey=(_ad[0]/_W,_ad[1]/_W)
+def meia(extremo,r):
+    c=Qp(extremo,.5); sg=1 if extremo==0 else -1
+    return [(c[0]+r*(sg*math.cos(t)*_ex[0]+math.sin(t)*_ey[0]),c[1]+r*(sg*math.cos(t)*_ex[1]+math.sin(t)*_ey[1]))
+            for t in [(-90+i*15)*math.pi/180 for i in range(13)]]
+for ex_ in (0,1):
+    chao(meia(ex_,_W*.42),"#6aa87a"); linha(meia(ex_,_W*.42))
+linha([Qp(.04,.06),Qp(.96,.06),Qp(.96,.94),Qp(.04,.94),Qp(.04,.06)]); linha([Qp(.5,.06),Qp(.5,.94)])
+chao(cx(Qp(.5,.5),_W*.13,20),"#3f7fc4"); linha(cx(Qp(.5,.5),_W*.2))
+# quadra 2 (piso cinza): linhas laterais, linha de meio e linhas de ataque
+_a,_b,_c,_d=Q2
+def Q2p(u,v): return lerp(lerp(_a,_b,u),lerp(_d,_c,u),v)
+linha([Q2p(.05,.07),Q2p(.95,.07),Q2p(.95,.93),Q2p(.05,.93),Q2p(.05,.07)]); linha([Q2p(.5,.07),Q2p(.5,.93)])
+linha([Q2p(.3,.07),Q2p(.3,.93)]); linha([Q2p(.7,.07),Q2p(.7,.93)])
 mureta(Q1); mureta(Q2)
 # campo de grama sintética
 chao([NO,NE,SE,SO],"#2f6b3d")
@@ -328,6 +354,7 @@ chao([(680,110),(780,125),(775,175),(680,165)],"#e6d3a0")
 bloco([(455,45),(528,60),(520,115),(455,100)],4.0,"#e6e2d8")
 bloco([(578,130),(635,138),(632,155),(578,148)],3.0,"#b9644d")
 todos+=[(455,45),(528,60),(680,110),(780,125),(775,175)]
+chao([(895,335),(945,268),(985,300),(938,368)],"#9aa0a6"); chao([(805,525),(880,396),(958,452),(925,545)],"#848a91")
 # postes de iluminação (altos, finos)
 for u,v in ((.04,-.05),(.5,-.05),(.96,-.05),(.04,1.05),(.96,1.05)):
     c=Pc(u,v); bloco(cx(c,3,4),16.0,"#8d9399")
@@ -340,8 +367,9 @@ def palmeira(c,r=11):
     bloco(cx(c,1.6,6),7.0,"#8a6a45")
     est=[(c[0]+(r if i%2==0 else r*0.35)*math.cos(math.pi*i/5),c[1]+(r if i%2==0 else r*0.35)*math.sin(math.pi*i/5)) for i in range(10)]
     bloco(est,7.6,"#5f8f3f",7.0)
-for c,r in (((190,432),22),((222,462),24),((255,440),20),((238,500),20),((205,478),18),((292,447),20),((318,478),17)): arvore(c,r)
-for c in ((352,186),(356,236),(300,286),(294,338),(282,372),(358,16),(386,32),(1095,335)): palmeira(c)
+for c,r in (((190,432),22),((222,462),24),((255,440),20),((238,500),20),((205,478),18),((292,447),20),((318,478),17),((170,420),16),((200,405),14),((335,512),17),((360,545),15),((445,545),15),((470,520),13),((568,553),14),((600,535),12),
+               ((835,18),24),((880,30),22),((930,60),30),((975,40),24),((1050,146),22),((1085,166),28),((1115,125),25),((1120,200),20),((1125,228),17),((1000,95),20),((850,60),14)): arvore(c,r)
+for c in ((352,186),(356,236),(300,286),(294,338),(282,372),(358,16),(386,32),(1095,335),(1100,352),(1050,426),(1078,423),(190,132),(285,292),(325,312),(330,360),(440,472),(520,468),(498,482),(312,420)): palmeira(c)
 todos+=[(190,432),(255,500),(185,430)]
 ZMQ=casco([pg(q) for q in todos])
 def centro_ring(f): return centroid(f["geometry"]["coordinates"][0])

@@ -58,10 +58,16 @@ export const mapStyle: StyleSpecification = {
       id: "marca", type: "line", source: "pirambu", filter: filtro("marca"), minzoom: 15,
       paint: { "line-color": "#f4f7f0", "line-opacity": 0.9, "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.4, 18, 2] },
     },
+    // Quebra-mar (espigão): pedras escuras nas bordas e areia clara no meio.
+    {
+      id: "espigao-pedra", type: "line", source: "pirambu", filter: filtro("espigao"),
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": "#5e5a57", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 2.5, 18, 16] },
+    },
     {
       id: "espigao", type: "line", source: "pirambu", filter: filtro("espigao"),
-      layout: { "line-cap": "round" },
-      paint: { "line-color": COR.espigao, "line-width": ["interpolate", ["linear"], ["zoom"], 13, 1.5, 18, 9] },
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": "#dfcc9f", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 1, 18, 8] },
     },
     {
       id: "espuma", type: "line", source: "pirambu", filter: filtro("costa"),
