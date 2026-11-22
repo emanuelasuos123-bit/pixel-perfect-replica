@@ -263,11 +263,12 @@ def circ_m(c,r,n=14): return [(c[0]+r*math.cos(2*math.pi*i/n)/KX,c[1]+r*math.sin
 def poligono(ring,h,b,cor): add("pred",{"type":"Polygon","coordinates":[[r6(q) for q in ring]+[r6(ring[0])]]},{"h":h,"b":b,"t":3,"cor":cor})
 r6=lambda p:[round(p[0],6),round(p[1],6)]
 for pts,h,base,tom in MODELOS:
-    if tom==5:   # árvore: tronco + copa arredondada em 3 camadas
-        ring=[px(q) for q in pts]; c=centroid(ring+[ring[0]]); r=max(math.hypot((q[0]-c[0])*KX,(q[1]-c[1])*KY) for q in ring)*0.55
-        poligono(circ_m(c,0.35,6),3.0,0,"#6b4a2f")
-        for k,(f,b,hh,cor) in enumerate(((1.0,2.5,4.8,"#4f7f38"),(0.8,4.8,6.6,"#5f8f3f"),(0.5,6.6,7.8,"#78a64c"))):
-            poligono(circ_m((c[0]+k*0.15/KX,c[1]-k*0.15/KY),r*f,14),hh,b,cor)
+    if tom==5:   # palmeira (tronco fino + copa em estrela, duas camadas)
+        ring=[px(q) for q in pts]; c=centroid(ring+[ring[0]]); r=max(3.8,max(math.hypot((q[0]-c[0])*KX,(q[1]-c[1])*KY) for q in ring)*0.55)
+        def est_m(rr,fi):
+            return [(c[0]+(rr if i%2==0 else rr*0.38)*math.cos(math.pi*i/5+fi)/KX,c[1]+(rr if i%2==0 else rr*0.38)*math.sin(math.pi*i/5+fi)/KY) for i in range(10)]
+        poligono(circ_m(c,0.45,6),9.5,0,"#8a6a45")
+        poligono(est_m(r,0),10.2,9.4,"#4f7f38"); poligono(est_m(r*0.8,math.pi/10),10.9,10.2,"#6a9a44")
         continue
     ring=[px(q) for q in pts]
     add("pred",{"type":"Polygon","coordinates":[[r5(q) for q in ring]+[r5(ring[0])]]},{"h":h,"b":base,"t":tom})
@@ -359,14 +360,17 @@ chao([(895,335),(945,268),(985,300),(938,368)],"#9aa0a6"); chao([(805,525),(880,
 for u,v in ((.04,-.05),(.5,-.05),(.96,-.05),(.04,1.05),(.96,1.05)):
     c=Pc(u,v); bloco(cx(c,3,4),16.0,"#8d9399")
 # árvores (copa arredondada em 3 camadas sobre um tronco) e palmeiras (tronco fino + copa em estrela)
-def arvore(c,r):
-    bloco(cx(c,max(1.6,r*0.12),6),3.0,"#6b4a2f")
-    for k,(f,b,h,cor) in enumerate(((1.0,2.5,4.8,"#4f7f38"),(0.8,4.8,6.6,"#5f8f3f"),(0.5,6.6,7.8,"#78a64c"))):
-        bloco(cx((c[0]+k*0.6,c[1]-k*0.6),r*f,14),h,cor,b)
-def palmeira(c,r=11):
-    bloco(cx(c,1.6,6),7.0,"#8a6a45")
-    est=[(c[0]+(r if i%2==0 else r*0.35)*math.cos(math.pi*i/5),c[1]+(r if i%2==0 else r*0.35)*math.sin(math.pi*i/5)) for i in range(10)]
-    bloco(est,7.6,"#5f8f3f",7.0)
+def estrela(c,r,n=5,fi=0.0):
+    pts=[]
+    for i in range(2*n):
+        rr=r if i%2==0 else r*0.38; a=math.pi*i/n+fi
+        pts.append((c[0]+rr*math.cos(a),c[1]+rr*math.sin(a)))
+    return pts
+def palmeira(c,r=16):
+    bloco(cx(c,2.2,6),9.5,"#8a6a45")
+    bloco(estrela(c,r,5),10.2,"#4f7f38",9.4)
+    bloco(estrela(c,r*0.8,5,math.pi/10),10.9,"#6a9a44",10.2)
+def arvore(c,r): palmeira(c,max(15,r*0.8))
 for c,r in (((190,432),22),((222,462),24),((255,440),20),((238,500),20),((205,478),18),((292,447),20),((318,478),17),((170,420),16),((200,405),14),((335,512),17),((360,545),15),((445,545),15),((470,520),13),((568,553),14),((600,535),12),
                ((835,18),24),((880,30),22),((930,60),30),((975,40),24),((1050,146),22),((1085,166),28),((1115,125),25),((1120,200),20),((1125,228),17),((1000,95),20),((850,60),14)): arvore(c,r)
 for c in ((352,186),(356,236),(300,286),(294,338),(282,372),(358,16),(386,32),(1095,335),(1100,352),(1050,426),(1078,423),(190,132),(285,292),(325,312),(330,360),(440,472),(520,468),(498,482),(312,420)): palmeira(c)
