@@ -4,7 +4,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { places, type Place } from "@/data/atlas";
 import { areaFoco, areaFocoAnel, caixaFoco as bounds, caixaLimite, limitarAoAnel } from "@/data/limites";
 import { mapStyle } from "./mapStyle";
-import maquetePolo from "@/data/maquetePolo.json";
 import { PlacePanel } from "./PlacePanel";
 import { Welcome, hasSeenWelcome, markWelcomeSeen } from "./Welcome";
 
@@ -45,16 +44,6 @@ export function Atlas() {
   const requestVersion = useRef(0);
   const [welcomeOpen, setWelcomeOpen] = useState(() => !hasSeenWelcome());
   const [orientationOpen, setOrientationOpen] = useState(false);
-  const [vista3d, setVista3d] = useState(false);
-
-  // Botão 2.5D: no celular, inclinar com gesto é difícil (dois dedos viram zoom).
-  const alternar3d = () => {
-    const m = map.current;
-    if (!m) return;
-    const ligar = m.getPitch() < 40;
-    setVista3d(ligar);
-    m.easeTo({ pitch: ligar ? 58 : 0, zoom: ligar ? Math.max(m.getZoom(), 16) : m.getZoom(), duration: 900 });
-  };
   // Guarda a versão mais recente da ação "tocou no mapa", pois o mapa é criado uma única vez.
   const mapClickRef = useRef<() => void>(() => {});
 
@@ -78,8 +67,6 @@ export function Atlas() {
       // Girar fica limitado: a câmera nunca vira para o lado da cidade/mar aberto.
       m.touchZoomRotate.disableRotation();
       m.keyboard.disableRotation();
-      m.touchPitch.enable();
-      m.on("pitchend", () => setVista3d(m.getPitch() >= 40));
       // Mantém o centro dentro da área de foco e o giro dentro do limite. Aplicado ao SOLTAR o gesto (e não durante o arrasto, o que
       // interromperia a inclinação): o mapa volta suavemente para dentro do permitido.
       m.on("moveend", () => {
@@ -122,11 +109,6 @@ export function Atlas() {
         m.addSource("territory", { type: "geojson", data: areaFoco });
         m.addLayer({ id: "territory-glow", type: "line", source: "territory", paint: { "line-color": "#6cc4ff", "line-width": 8, "line-blur": 8, "line-opacity": 0.35 } });
         m.addLayer({ id: "territory-line", type: "line", source: "territory", paint: { "line-color": "#8fd3ff", "line-width": 1.4 } });
-
-        // Maquete do Polo: pisos, linhas, traves, alambrado e arquibancada.
-        m.addSource("maquete", { type: "geojson", data: maquetePolo as never });
-        m.addLayer({ id: "maquete-volumes", type: "fill-extrusion", source: "maquete", minzoom: 15, filter: ["!=", ["get", "parte"], "linha"], paint: { "fill-extrusion-color": ["get", "cor"], "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": ["get", "b"], "fill-extrusion-opacity": 0.97 } });
-        m.addLayer({ id: "maquete-linhas", type: "line", source: "maquete", minzoom: 15.5, filter: ["==", ["get", "parte"], "linha"], paint: { "line-color": "#ffffff", "line-width": 1.2, "line-opacity": 0.9 } });
 
         places.forEach((p) => {
           const d = document.createElement("div");
@@ -224,7 +206,6 @@ export function Atlas() {
       <div className={`absolute bottom-6 left-4 z-10 flex-col items-start gap-2 md:left-6 ${active ? "hidden md:flex" : "flex"}`}>
         <div className="flex gap-2">
           <button onClick={close} className="glass rounded-full px-4 py-2 text-xs font-medium hover:text-primary">Voltar ao território</button>
-          <button onClick={alternar3d} aria-pressed={vista3d} className="glass min-h-9 rounded-full px-4 py-2 text-xs font-semibold hover:text-primary">{vista3d ? "Vista de cima" : "Ver em 2.5D"}</button>
         </div>
       </div>
 
