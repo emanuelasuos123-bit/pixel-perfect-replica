@@ -212,6 +212,10 @@ for ids in grade.values():
             inter=clip_poly([tuple(q) for q in menor["ring"]],maior["casco"] if area(maior["casco"])>0 else maior["casco"][::-1])
             if len(inter)>=3 and m2(inter)/menor["a"]>0.45: menor["rm"]=True; removidos+=1
 predios=[b for b in predios if not b["rm"]]
+# casinhas minúsculas (viram "cubinhos" no 3D e poluem o mapa): menores que 28 m², ou até 45 m² se muito altas
+antes=len(predios)
+predios=[b for b in predios if b["t"]==5 or not (b["a"]<28 or (b["a"]<45 and b["h"]>=4.5))]
+print("casinhas minúsculas removidas:",antes-len(predios))
 print("prédios sobrepostos removidos:",removidos)
 # (c) encolhe cada prédio ~25 cm para abrir uma fresta entre vizinhos; tons; prédios grandes
 grandes=0

@@ -18,7 +18,7 @@ const COR = {
   ruaMenor: "#6c6c72",
   ruaMaior: "#505057",
   ruaPedestre: "#9a958a",
-  casas: ["#c4573a", "#b5472e", "#d06a47", "#d98a5f"] as const, // tons de telhado
+  casas: ["#b9644d", "#a85a46", "#c97d66", "#9b5645"] as const, // tons de telhado
   grandes: "#d9dbdd", // estruturas grandes (prédios, galpões, ginásios): cinza-claro
   arvore: "#5f8f3f",
 };

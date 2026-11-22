@@ -44,6 +44,7 @@ export function Atlas() {
   const requestVersion = useRef(0);
   const [welcomeOpen, setWelcomeOpen] = useState(() => !hasSeenWelcome());
   const [orientationOpen, setOrientationOpen] = useState(false);
+  const [inclinacao, setInclinacao] = useState(20);
   // Guarda a versão mais recente da ação "tocou no mapa", pois o mapa é criado uma única vez.
   const mapClickRef = useRef<() => void>(() => {});
 
@@ -66,6 +67,9 @@ export function Atlas() {
       // Inclinar pode (dois dedos para cima/baixo no celular; botão direito no computador).
       // Girar fica limitado: a câmera nunca vira para o lado da cidade/mar aberto.
       m.touchZoomRotate.disableRotation();
+      // No celular, dois dedos só dão zoom; a inclinação é feita pelo controle na tela (direita).
+      m.touchPitch.disable();
+      m.on("pitch", () => setInclinacao(Math.round(m.getPitch())));
       m.keyboard.disableRotation();
       // Mantém o centro dentro da área de foco e o giro dentro do limite. Aplicado ao SOLTAR o gesto (e não durante o arrasto, o que
       // interromperia a inclinação): o mapa volta suavemente para dentro do permitido.
@@ -207,6 +211,21 @@ export function Atlas() {
         <div className="flex gap-2">
           <button onClick={close} className="glass rounded-full px-4 py-2 text-xs font-medium hover:text-primary">Voltar ao território</button>
         </div>
+      </div>
+
+      {/* Controle de inclinação (2.5D): funciona no celular e no computador */}
+      <div className="glass absolute right-4 top-[68px] z-10 flex w-11 flex-col items-center gap-1 rounded-full py-2 md:right-6 md:top-[76px]">
+        <span className="text-[10px] font-semibold leading-none">2.5D</span>
+        <input
+          type="range"
+          min={0}
+          max={INCLINACAO_MAXIMA}
+          step={1}
+          value={inclinacao}
+          aria-label="Inclinação do mapa"
+          onChange={(e) => map.current?.easeTo({ pitch: Number(e.target.value), duration: 0 })}
+          className="h-28 w-6 cursor-pointer accent-[#6cc4ff] [direction:rtl] [writing-mode:vertical-lr]"
+        />
       </div>
 
       {/* Botão para rever as boas-vindas / sobre o projeto */}
