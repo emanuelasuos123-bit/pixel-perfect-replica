@@ -300,8 +300,8 @@ def cx(c,r,n=24): return [(c[0]+r*math.cos(2*math.pi*i/n),c[1]+r*math.sin(2*math
 
 todos=[]
 # quadras ao lado do campo (cimento/piso claro) com muretas laranja
-Q1=[(158,236),(232,128),(298,162),(282,262),(212,288)]
-Q2=[(262,12),(402,48),(352,160),(242,118)]
+Q1=[(160,240),(230,127),(298,163),(228,276)]
+Q2=[(262,12),(402,48),(372,158),(240,122)]
 chao(Q2,"#b9bec3"); chao(Q1,"#8fb4c0"); todos+=Q1+Q2
 linha(cx((248,157),17)); linha(cx((222,207),8))
 mureta(Q1); mureta(Q2)
@@ -331,11 +331,17 @@ todos+=[(455,45),(528,60),(680,110),(780,125),(775,175)]
 # postes de iluminação (altos, finos)
 for u,v in ((.04,-.05),(.5,-.05),(.96,-.05),(.04,1.05),(.96,1.05)):
     c=Pc(u,v); bloco(cx(c,3,4),16.0,"#8d9399")
-# árvores e palmeiras (copas elevadas, como nas fotos)
-for c,r in (((190,432),22),((222,462),24),((255,440),20),((238,500),20),((205,478),18),((292,447),20),((318,478),17)):
-    add("pred",poly_g(cx(c,r,14)),{"h":8.0,"b":2.5,"t":5})
-for c in ((352,186),(356,236),(300,286),(294,338),(282,372),(358,16),(386,32),(1095,335)):
-    add("pred",poly_g(cx(c,8,10)),{"h":8.0,"b":3.0,"t":5})
+# árvores (copa arredondada em 3 camadas sobre um tronco) e palmeiras (tronco fino + copa em estrela)
+def arvore(c,r):
+    bloco(cx(c,max(1.6,r*0.12),6),3.0,"#6b4a2f")
+    for k,(f,b,h,cor) in enumerate(((1.0,2.5,4.8,"#4f7f38"),(0.8,4.8,6.6,"#5f8f3f"),(0.5,6.6,7.8,"#78a64c"))):
+        bloco(cx((c[0]+k*0.6,c[1]-k*0.6),r*f,14),h,cor,b)
+def palmeira(c,r=11):
+    bloco(cx(c,1.6,6),7.0,"#8a6a45")
+    est=[(c[0]+(r if i%2==0 else r*0.35)*math.cos(math.pi*i/5),c[1]+(r if i%2==0 else r*0.35)*math.sin(math.pi*i/5)) for i in range(10)]
+    bloco(est,7.6,"#5f8f3f",7.0)
+for c,r in (((190,432),22),((222,462),24),((255,440),20),((238,500),20),((205,478),18),((292,447),20),((318,478),17)): arvore(c,r)
+for c in ((352,186),(356,236),(300,286),(294,338),(282,372),(358,16),(386,32),(1095,335)): palmeira(c)
 todos+=[(190,432),(255,500),(185,430)]
 ZMQ=casco([pg(q) for q in todos])
 def centro_ring(f): return centroid(f["geometry"]["coordinates"][0])
