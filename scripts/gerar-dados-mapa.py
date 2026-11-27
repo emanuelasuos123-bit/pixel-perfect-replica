@@ -8,13 +8,13 @@ O script recorta tudo pelo contorno externo de src/data/limites.ts (casco convex
 Consulta (Overpass QL):
   [out:json][timeout:90];
   (
-    way["building"](-3.7210,-38.5650,-3.6985,-38.5355);
-    way["highway"](-3.7210,-38.5650,-3.6985,-38.5355);
-    way["natural"~"coastline|beach|sand|water"](-3.7210,-38.5650,-3.6985,-38.5355);
-    way["man_made"~"groyne|pier|breakwater"](-3.7210,-38.5650,-3.6985,-38.5355);
-    way["leisure"](-3.7210,-38.5650,-3.6985,-38.5355);
-    way["landuse"](-3.7210,-38.5650,-3.6985,-38.5355);
-    relation["building"](-3.7210,-38.5650,-3.6985,-38.5355);
+    way["building"](-3.7260,-38.5650,-3.6985,-38.5300);
+    way["highway"](-3.7260,-38.5650,-3.6985,-38.5300);
+    way["natural"~"coastline|beach|sand|water"](-3.7260,-38.5650,-3.6985,-38.5300);
+    way["man_made"~"groyne|pier|breakwater"](-3.7260,-38.5650,-3.6985,-38.5300);
+    way["leisure"](-3.7260,-38.5650,-3.6985,-38.5300);
+    way["landuse"](-3.7260,-38.5650,-3.6985,-38.5300);
+    relation["building"](-3.7260,-38.5650,-3.6985,-38.5300);
   );
   (._;>;);
   out body;
